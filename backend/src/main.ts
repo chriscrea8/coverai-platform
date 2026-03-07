@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { ValidationPipe, Logger, Controller, Get, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
@@ -11,12 +11,13 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule, {
-    logger: ['error', 'warn', 'log', 'debug'],
+    logger: ['error', 'warn', 'log'],
   });
 
   const cfg = app.get(ConfigService);
-  const port = cfg.get<number>('app.port', 3000);
-  const nodeEnv = cfg.get<string>('app.nodeEnv');
+  const port = cfg.get<number>('app.port') || parseInt(process.env.PORT, 10) || 3000;
+  const nodeEnv = cfg.get<string>('app.nodeEnv') || process.env.NODE_ENV || 'production';
+  const frontendUrl = cfg.get<string>('app.frontendUrl') || process.env.FRONTEND_URL || '*';
 
   // Security
   app.use(helmet());
@@ -24,7 +25,7 @@ async function bootstrap() {
 
   // CORS
   app.enableCors({
-    origin: [cfg.get('app.frontendUrl'), 'http://localhost:3001'],
+    origin: [frontendUrl, 'http://localhost:3001', 'https://coverai-platform.vercel.app'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
@@ -35,41 +36,31 @@ async function bootstrap() {
   // Global pipes, filters, interceptors
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
-    forbidNonWhitelisted: true,
+    forbidNonWhitelisted: false,
     transform: true,
     transformOptions: { enableImplicitConversion: true },
   }));
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new ResponseInterceptor());
 
-  // Swagger (non-production)
-  if (nodeEnv !== 'production') {
-    const swaggerConfig = new DocumentBuilder()
-      .setTitle('CoverAI API')
-      .setDescription('InsurTech Platform REST API — Nigeria & Africa')
-      .setVersion('1.0')
-      .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'JWT')
-      .addApiKey({ type: 'apiKey', name: 'x-api-key', in: 'header' }, 'ApiKey')
-      .addTag('Auth', 'Authentication & Authorization')
-      .addTag('Users', 'User Profile Management')
-      .addTag('SME', 'SME Business Profiles')
-      .addTag('Insurance Products', 'Product Catalog')
-      .addTag('Policies', 'Policy Purchase & Management')
-      .addTag('Payments', 'Payment Processing')
-      .addTag('Claims', 'Claims Submission & Tracking')
-      .addTag('Chat', 'AI Insurance Assistant')
-      .addTag('Partner API', 'Embedded Insurance API')
-      .addTag('Admin', 'Admin Back Office')
-      .build();
-    const document = SwaggerModule.createDocument(app, swaggerConfig);
-    SwaggerModule.setup('api/docs', app, document, {
-      swaggerOptions: { persistAuthorization: true },
-    });
-    logger.log(`Swagger docs: http://localhost:${port}/api/docs`);
-  }
+  // Swagger
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('CoverAI API')
+    .setDescription('InsurTech Platform REST API — Nigeria & Africa')
+    .setVersion('1.0')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'JWT')
+    .addTag('Auth').addTag('Users').addTag('SME')
+    .addTag('Insurance Products').addTag('Policies')
+    .addTag('Payments').addTag('Claims').addTag('Chat')
+    .build();
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api/docs', app, document, {
+    swaggerOptions: { persistAuthorization: true },
+  });
 
-  await app.listen(port);
-  logger.log(`CoverAI API running on port ${port} [${nodeEnv}]`);
+  await app.listen(port, '0.0.0.0');
+  logger.log(`✅ CoverAI API running on port ${port} [${nodeEnv}]`);
+  logger.log(`📖 Swagger docs: http://localhost:${port}/api/docs`);
 }
 
 bootstrap();

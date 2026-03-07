@@ -1,14 +1,6 @@
-// ── policies/policy.entity.ts ────────────────────────────────
-import {
-  Entity, PrimaryGeneratedColumn, Column, ManyToOne,
-  JoinColumn, CreateDateColumn, UpdateDateColumn,
-} from 'typeorm';
-import { User } from '../users/user.entity';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
-export enum PolicyStatus {
-  ACTIVE = 'active', EXPIRED = 'expired',
-  CANCELLED = 'cancelled', PENDING = 'pending', LAPSED = 'lapsed',
-}
+export enum PolicyStatus { ACTIVE = 'active', EXPIRED = 'expired', CANCELLED = 'cancelled', PENDING = 'pending', LAPSED = 'lapsed' }
 
 @Entity('policies')
 export class Policy {
@@ -25,10 +17,8 @@ export class Policy {
   @Column({ name: 'start_date', type: 'date', nullable: true }) startDate: Date;
   @Column({ name: 'end_date', type: 'date', nullable: true }) endDate: Date;
   @Column({ name: 'document_url', nullable: true }) documentUrl: string;
-  @Column({ name: 'provider_policy_id', nullable: true }) providerPolicyId: string;
-  @Column({ name: 'policy_details', type: 'jsonb', default: {} }) policyDetails: Record<string, any>;
+  @Column({ name: 'policy_details', type: 'jsonb', default: () => "'{}'" }) policyDetails: Record<string, any>;
   @Column({ name: 'auto_renew', default: false }) autoRenew: boolean;
-  @ManyToOne(() => User) @JoinColumn({ name: 'user_id' }) user: User;
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' }) createdAt: Date;
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' }) updatedAt: Date;
 }
