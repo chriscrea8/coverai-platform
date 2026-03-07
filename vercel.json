@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "name": "coverai-frontend",
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "outputDirectory": "frontend/.next",
+  "installCommand": "cd frontend && npm install",
+  "framework": "nextjs",
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://coverai-api.up.railway.app/api/:path*" }
+  ],
+  "env": {
+    "NEXT_PUBLIC_API_URL": "https://coverai-api.up.railway.app/api/v1",
+    "NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY": "pk_test_6091b024802dbd8f0158775e420c0962a9b6368d"
+  }
+}

@@ -1,0 +1,92 @@
+import axios from 'axios'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'
+
+export const api = axios.create({
+  baseURL: API_URL,
+  headers: { 'Content-Type': 'application/json' },
+  timeout: 30000,
+})
+
+// Attach JWT token to every request
+api.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('access_token')
+    if (token) config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+// Auto refresh on 401
+api.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    const original = error.config
+    if (error.response?.status === 401 && !original._retry) {
+      original._retry = true
+      try {
+        const refresh = localStorage.getItem('refresh_token')
+        if (!refresh) throw new Error('No refresh token')
+        const { data } = await axios.post(`${API_URL}/auth/refresh-token`, { refreshToken: refresh })
+        localStorage.setItem('access_token', data.data.accessToken)
+        localStorage.setItem('refresh_token', data.data.refreshToken)
+        original.headers.Authorization = `Bearer ${data.data.accessToken}`
+        return api(original)
+      } catch {
+        localStorage.clear()
+        if (typeof window !== 'undefined') window.location.href = '/auth'
+      }
+    }
+    return Promise.reject(error)
+  }
+)
+
+// ── Auth ──────────────────────────────────────────────────────
+export const authApi = {
+  register: (data: any) => api.post('/auth/register', data),
+  login: (data: any) => api.post('/auth/login', data),
+  logout: () => api.post('/auth/logout'),
+  forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (token: string, password: string) => api.post('/auth/reset-password', { token, password }),
+}
+
+// ── User ──────────────────────────────────────────────────────
+export const userApi = {
+  getProfile: () => api.get('/users/profile'),
+  updateProfile: (data: any) => api.patch('/users/profile', data),
+}
+
+// ── Policies ──────────────────────────────────────────────────
+export const policiesApi = {
+  getAll: () => api.get('/policies'),
+  getById: (id: string) => api.get(`/policies/${id}`),
+  purchase: (data: any) => api.post('/policies/purchase', data),
+  getProducts: (params?: any) => api.get('/insurance/products', { params }),
+}
+
+// ── Payments ──────────────────────────────────────────────────
+export const paymentsApi = {
+  create: (data: any) => api.post('/payments/create', data),
+  verify: (ref: string) => api.get(`/payments/verify/${ref}`),
+  getHistory: () => api.get('/payments/history'),
+}
+
+// ── Claims ────────────────────────────────────────────────────
+export const claimsApi = {
+  getAll: () => api.get('/claims'),
+  getById: (id: string) => api.get(`/claims/${id}`),
+  create: (data: any) => api.post('/claims', data),
+}
+
+// ── Chat ──────────────────────────────────────────────────────
+export const chatApi = {
+  send: (message: string, sessionId?: string) => api.post('/chat', { message, sessionId }),
+  getHistory: (sessionId?: string) => api.get('/chat/history', { params: { sessionId } }),
+}
+
+// ── SME ───────────────────────────────────────────────────────
+export const smeApi = {
+  create: (data: any) => api.post('/sme/create', data),
+  getProfile: () => api.get('/sme/profile'),
+  update: (data: any) => api.patch('/sme/profile', data),
+}

@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --ink: #0A0F1E;
+    --navy: #0D1B3E;
+    --blue: #1A3A8F;
+    --accent: #F4A623;
+    --teal: #00C2A8;
+    --muted: #8492B4;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--ink); color: #fff; font-family: 'DM Sans', sans-serif; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--navy); }
+  ::-webkit-scrollbar-thumb { background: var(--blue); border-radius: 4px; }
+}
+
+@layer utilities {
+  .font-syne { font-family: 'Syne', sans-serif; }
+  .font-dm { font-family: 'DM Sans', sans-serif; }
+  .bg-ink { background-color: #0A0F1E; }
+  .bg-navy { background-color: #0D1B3E; }
+  .text-accent { color: #F4A623; }
+  .text-teal { color: #00C2A8; }
+  .text-muted { color: #8492B4; }
+  .border-subtle { border-color: rgba(255,255,255,0.08); }
+  .gradient-hero {
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(26,58,143,0.35) 0%, transparent 70%),
+                radial-gradient(ellipse 50% 40% at 80% 80%, rgba(0,194,168,0.12) 0%, transparent 60%),
+                #0A0F1E;
+  }
+}
+
+.noise-overlay::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+}
+
+@keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.4} }
+@keyframes bounce-dot { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+@keyframes fade-in { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+@keyframes glow-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(244,166,35,0.4)} 50%{box-shadow:0 0 0 8px rgba(244,166,35,0)} }
+
+.animate-fade-in { animation: fade-in 0.4s ease forwards; }
+.animate-glow { animation: glow-pulse 2s infinite; }
+.dot-pulse { animation: pulse-dot 2s infinite; }
+.dot-bounce { animation: bounce-dot 1.2s infinite; }
+.dot-bounce-2 { animation: bounce-dot 1.2s 0.2s infinite; }
+.dot-bounce-3 { animation: bounce-dot 1.2s 0.4s infinite; }
