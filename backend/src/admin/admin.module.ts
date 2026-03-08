@@ -5,14 +5,15 @@ import { AdminService } from './admin.service';
 import { User } from '../users/user.entity';
 import { Policy } from '../policies/policy.entity';
 import { Claim } from '../claims/claim.entity';
-import { ClaimsModule } from '../claims/claims.module';
+import { InsuranceProvider } from '../insurance-providers/insurance-provider.entity';
+import { InsuranceProduct } from '../insurance-products/insurance-product.entity';
+import { Payment } from '../payments/payment.entity';
 import { CommissionsModule } from '../commissions/commissions.module';
 import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Policy, Claim]),
-    ClaimsModule,
+    TypeOrmModule.forFeature([User, Policy, Claim, InsuranceProvider, InsuranceProduct, Payment]),
     CommissionsModule,
     UsersModule,
   ],

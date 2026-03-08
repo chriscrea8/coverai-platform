@@ -1,8 +1,9 @@
-// ── claims/claim.entity.ts ───────────────────────────────────
 import {
   Entity, PrimaryGeneratedColumn, Column,
-  CreateDateColumn, UpdateDateColumn,
+  CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn,
 } from 'typeorm';
+import { User } from '../users/user.entity';
+import { Policy } from '../policies/policy.entity';
 
 export enum ClaimStatus {
   SUBMITTED = 'submitted', UNDER_REVIEW = 'under_review',
@@ -31,4 +32,12 @@ export class Claim {
   @Column({ name: 'resolved_at', type: 'timestamptz', nullable: true }) resolvedAt: Date;
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' }) createdAt: Date;
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' }) updatedAt: Date;
+
+  @ManyToOne(() => User, { nullable: true, eager: false })
+  @JoinColumn({ name: 'user_id' })
+  user: User;
+
+  @ManyToOne(() => Policy, { nullable: true, eager: false })
+  @JoinColumn({ name: 'policy_id' })
+  policy: Policy;
 }

@@ -1,4 +1,3 @@
-// ── admin/admin.controller.ts ────────────────────────────────
 import {
   Controller, Get, Post, Patch, Body, Param,
   UseGuards, Query,
@@ -6,7 +5,6 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags, ApiQuery } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
-import { ReviewClaimDto } from '../claims/claims.service';
 import { Roles, CurrentUser } from '../common/decorators';
 import { RolesGuard } from '../common/guards';
 import { UserRole } from '../users/user.entity';
@@ -19,68 +17,99 @@ import { UserRole } from '../users/user.entity';
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
-  // ── USERS ────────────────────────────────────────────────
+  // ── STATS / KPIs ──────────────────────────────────────────
+  @Get('stats')
+  @ApiOperation({ summary: 'Admin dashboard KPI stats' })
+  getStats() { return this.adminService.getStats(); }
+
+  // ── USERS ─────────────────────────────────────────────────
   @Get('users')
   @ApiOperation({ summary: 'List all users' })
   @ApiQuery({ name: 'role', required: false })
-  @ApiQuery({ name: 'page', required: false })
-  getUsers(@Query('role') role?: string, @Query('page') page?: number) {
-    return this.adminService.getUsers({ role, page });
+  getUsers(@Query('role') role?: string) {
+    return this.adminService.getUsers({ role });
   }
 
   @Patch('users/:id/suspend')
   @ApiOperation({ summary: 'Suspend a user account' })
-  suspendUser(@Param('id') id: string) {
-    return this.adminService.suspendUser(id);
-  }
+  suspendUser(@Param('id') id: string) { return this.adminService.suspendUser(id); }
 
-  // ── POLICIES ─────────────────────────────────────────────
+  @Patch('users/:id/activate')
+  @ApiOperation({ summary: 'Reactivate a user account' })
+  activateUser(@Param('id') id: string) { return this.adminService.activateUser(id); }
+
+  // ── POLICIES ──────────────────────────────────────────────
   @Get('policies')
   @ApiOperation({ summary: 'List all policies' })
   getPolicies(@Query('status') status?: string) {
     return this.adminService.getPolicies({ status });
   }
 
-  // ── CLAIMS ───────────────────────────────────────────────
+  @Patch('policies/:id/activate')
+  @ApiOperation({ summary: 'Manually activate a policy' })
+  activatePolicy(@Param('id') id: string) { return this.adminService.activatePolicy(id); }
+
+  // ── CLAIMS ────────────────────────────────────────────────
   @Get('claims')
   @ApiOperation({ summary: 'List all claims' })
   getClaims(@Query('status') status?: string) {
     return this.adminService.getClaims({ status });
   }
 
-  @Post('claims/:id/approve')
-  @ApiOperation({ summary: 'Approve or reject a claim' })
-  reviewClaim(
-    @Param('id') claimId: string,
+  @Patch('claims/:id/approve')
+  @ApiOperation({ summary: 'Approve a claim' })
+  approveClaim(
+    @Param('id') id: string,
     @CurrentUser('id') reviewerId: string,
-    @Body() dto: ReviewClaimDto,
-  ) {
-    return this.adminService.reviewClaim(claimId, reviewerId, dto);
-  }
+    @Body() body: { note?: string },
+  ) { return this.adminService.approveClaim(id, reviewerId, body.note); }
 
-  // ── PROVIDERS ────────────────────────────────────────────
+  @Patch('claims/:id/reject')
+  @ApiOperation({ summary: 'Reject a claim' })
+  rejectClaim(
+    @Param('id') id: string,
+    @CurrentUser('id') reviewerId: string,
+    @Body() body: { note?: string },
+  ) { return this.adminService.rejectClaim(id, reviewerId, body.note); }
+
+  // ── PROVIDERS ─────────────────────────────────────────────
   @Get('providers')
   @ApiOperation({ summary: 'List all insurance providers' })
-  getProviders() {
-    return this.adminService.getProviders();
-  }
+  getProviders() { return this.adminService.getProviders(); }
 
-  @Post('providers/:id/approve')
-  @ApiOperation({ summary: 'Approve an insurance provider' })
-  approveProvider(@Param('id') id: string) {
-    return this.adminService.approveProvider(id);
-  }
+  @Post('providers')
+  @ApiOperation({ summary: 'Onboard a new insurance provider' })
+  createProvider(@Body() body: any) { return this.adminService.createProvider(body); }
 
-  // ── ANALYTICS ────────────────────────────────────────────
+  @Patch('providers/:id/activate')
+  @ApiOperation({ summary: 'Activate a provider' })
+  activateProvider(@Param('id') id: string) { return this.adminService.setProviderStatus(id, 'active'); }
+
+  @Patch('providers/:id/deactivate')
+  @ApiOperation({ summary: 'Deactivate a provider' })
+  deactivateProvider(@Param('id') id: string) { return this.adminService.setProviderStatus(id, 'inactive'); }
+
+  // ── PRODUCTS ──────────────────────────────────────────────
+  @Get('products')
+  @ApiOperation({ summary: 'List all insurance products' })
+  getProducts() { return this.adminService.getProducts(); }
+
+  @Post('products')
+  @ApiOperation({ summary: 'Add a new insurance product' })
+  createProduct(@Body() body: any) { return this.adminService.createProduct(body); }
+
+  @Patch('products/:id/activate')
+  @ApiOperation({ summary: 'Activate a product' })
+  activateProduct(@Param('id') id: string) { return this.adminService.setProductStatus(id, 'active'); }
+
+  @Patch('products/:id/deactivate')
+  @ApiOperation({ summary: 'Deactivate a product' })
+  deactivateProduct(@Param('id') id: string) { return this.adminService.setProductStatus(id, 'inactive'); }
+
+  // ── ANALYTICS ─────────────────────────────────────────────
   @Get('analytics/revenue')
-  @ApiOperation({ summary: 'Revenue analytics and commission report' })
+  @ApiOperation({ summary: 'Revenue analytics' })
   getRevenue(@Query('startDate') startDate?: string, @Query('endDate') endDate?: string) {
     return this.adminService.getRevenueAnalytics({ startDate, endDate });
-  }
-
-  @Get('analytics/dashboard')
-  @ApiOperation({ summary: 'Admin dashboard KPIs' })
-  getDashboard() {
-    return this.adminService.getDashboardKpis();
   }
 }

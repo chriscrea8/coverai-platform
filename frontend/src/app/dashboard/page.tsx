@@ -1,4 +1,5 @@
 'use client'
+export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -118,6 +119,12 @@ export default function DashboardPage() {
             <Link href="/claims/new" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted hover:text-white hover:bg-white/5 transition-all">
               <span>⚡</span>New Claim
             </Link>
+            {user?.role === 'admin' && (
+              <Link href="/admin" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-red-400 hover:bg-red-400/10 transition-all mt-2"
+                style={{ border: '1px solid rgba(232,69,69,0.2)' }}>
+                <span>🔐</span>Admin Panel
+              </Link>
+            )}
           </nav>
           <button onClick={logout} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-muted hover:text-red-400 transition-all">
             <span>🚪</span>Sign Out
