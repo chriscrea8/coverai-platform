@@ -1,4 +1,3 @@
-// ── common/filters/http-exception.filter.ts ──────────────────
 import {
   ExceptionFilter, Catch, ArgumentsHost,
   HttpException, HttpStatus, Logger,
@@ -14,13 +13,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    const status = exception instanceof HttpException
+    const isHttp = exception instanceof HttpException;
+    const status = isHttp
       ? exception.getStatus()
       : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message = exception instanceof HttpException
-      ? exception.getResponse()
-      : 'Internal server error';
+    const rawMessage = isHttp ? exception.getResponse() : 'Internal server error';
+
+    const message = typeof rawMessage === 'string'
+      ? rawMessage
+      : (rawMessage as any)?.message || 'Internal server error';
 
     const errorResponse = {
       success: false,
@@ -28,13 +30,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path: request.url,
       method: request.method,
-      message: typeof message === 'string'
-        ? message
-        : (message as any)?.message || message,
+      message,
     };
 
     if (status >= 500) {
-      this.logger.error(`${request.method} ${request.url}`, exception instanceof Error ? exception.stack : String(exception));
+      this.logger.error(
+        `${request.method} ${request.url}`,
+        exception instanceof Error ? exception.stack : String(exception),
+      );
     }
 
     response.status(status).json(errorResponse);

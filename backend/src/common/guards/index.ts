@@ -1,6 +1,6 @@
-// ── common/guards/roles.guard.ts ─────────────────────────────
 import {
-  Injectable, CanActivate, ExecutionContext, ForbiddenException,
+  Injectable, CanActivate, ExecutionContext,
+  ForbiddenException, UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators';
@@ -25,18 +25,12 @@ export class RolesGuard implements CanActivate {
   }
 }
 
-// ── common/guards/api-key.guard.ts ───────────────────────────
-import { Injectable as Inj, CanActivate as CA, ExecutionContext as EC, UnauthorizedException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
-  canActivate(context: EC): boolean {
+  canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
     const apiKey = request.headers['x-api-key'];
     if (!apiKey) throw new UnauthorizedException('API key required');
-    // Partner validation is handled in PartnersService
     request.apiKey = apiKey;
     return true;
   }

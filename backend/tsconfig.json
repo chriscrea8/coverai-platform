@@ -21,6 +21,8 @@
     "noUnusedParameters": false,
     "noImplicitReturns": false,
     "strict": false,
+    "lib": ["ES2021"],
+    "types": ["node"],
     "paths": {
       "@auth/*": ["src/auth/*"],
       "@users/*": ["src/users/*"],

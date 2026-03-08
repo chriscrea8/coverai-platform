@@ -74,7 +74,7 @@ export class PoliciesService {
   }
 
   // ── ACTIVATE (called after payment) ───────────────────────
-  async activate(policyId: string, paymentId: string): Promise<Policy> {
+  async activate(policyId: string, paymentId?: string): Promise<Policy> {
     const policy = await this.findById(policyId);
     policy.policyStatus = PolicyStatus.ACTIVE;
     await this.policyRepo.save(policy);

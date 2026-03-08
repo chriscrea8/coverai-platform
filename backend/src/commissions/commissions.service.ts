@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Commission } from './commissions.module';
+import { Commission } from './commission.entity';
 
 @Injectable()
 export class CommissionsService {

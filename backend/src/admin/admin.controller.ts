@@ -6,7 +6,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags, ApiQuery } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
-import { ReviewClaimDto } from '../claims/claims.module';
+import { ReviewClaimDto } from '../claims/claims.service';
 import { Roles, CurrentUser } from '../common/decorators';
 import { RolesGuard } from '../common/guards';
 import { UserRole } from '../users/user.entity';
