@@ -10,9 +10,12 @@ import axios from 'axios';
 import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { Payment, PaymentStatus } from './payment.entity';
-import { PoliciesService } from '../policies/policies.module';
-import { NotificationsService } from '../notifications/notifications.module';
-import { UsersService } from '../users/users.module';
+import { PoliciesService } from '../policies/policies.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { UsersService } from '../users/users.service';
+import { PoliciesModule } from '../policies/policies.module';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { UsersModule } from '../users/users.module';
 import { CurrentUser } from '../common/decorators';
 
 export class CreatePaymentDto {
@@ -58,7 +61,7 @@ export class PaymentsService {
       return { payment, authorizationUrl: authorization_url, accessCode: access_code, reference };
     } catch (error) {
       this.logger.error('Paystack init failed: ' + (error?.response?.data?.message || error.message));
-      return { payment, authorizationUrl: null, reference, message: 'Payment initialized (gateway unavailable in test mode)' };
+      return { payment, authorizationUrl: null, reference, message: 'Payment initialized (gateway unavailable)' };
     }
   }
 
@@ -78,14 +81,21 @@ export class PaymentsService {
     if (!payment) return;
     await this.paymentRepo.update(payment.id, { paymentStatus: PaymentStatus.SUCCESSFUL, paidAt: new Date(), gatewayResponse: data });
     if (payment.policyId) await this.policiesService.activate(payment.policyId);
-    const user = await this.usersService.findById(payment.userId);
-    if (user) await this.notificationsService.sendEmail(user, { subject: '✅ Payment Confirmed', message: `Payment of ₦${payment.amount} confirmed. Ref: ${payment.paymentReference}` }).catch(() => {});
+    try {
+      const user = await this.usersService.findById(payment.userId);
+      if (user) await this.notificationsService.sendEmail(user, {
+        subject: '✅ Payment Confirmed',
+        message: `Payment of ₦${payment.amount} confirmed. Ref: ${payment.paymentReference}`,
+      });
+    } catch {}
   }
 
   async verify(reference: string) {
     try {
       const secretKey = this.configService.get('paystack.secretKey');
-      const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, { headers: { Authorization: `Bearer ${secretKey}` } });
+      const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
+        headers: { Authorization: `Bearer ${secretKey}` },
+      });
       if (response.data.data.status === 'success') await this.handleSuccess(response.data.data);
       return { status: response.data.data.status, reference };
     } catch (e) {
@@ -104,10 +114,14 @@ export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   @Post('create') @UseGuards(AuthGuard('jwt')) @ApiBearerAuth('JWT') @ApiOperation({ summary: 'Initiate payment' })
-  create(@CurrentUser('id') userId: string, @Body() dto: CreatePaymentDto) { return this.paymentsService.create(userId, dto); }
+  create(@CurrentUser('id') userId: string, @Body() dto: CreatePaymentDto) {
+    return this.paymentsService.create(userId, dto);
+  }
 
   @Post('webhook') @ApiOperation({ summary: 'Paystack webhook' })
-  webhook(@Headers('x-paystack-signature') sig: string, @Req() req: any) { return this.paymentsService.handleWebhook(sig, req.rawBody || Buffer.from(JSON.stringify(req.body))); }
+  webhook(@Headers('x-paystack-signature') sig: string, @Req() req: any) {
+    return this.paymentsService.handleWebhook(sig, req.rawBody || Buffer.from(JSON.stringify(req.body)));
+  }
 
   @Get('verify/:ref') @UseGuards(AuthGuard('jwt')) @ApiBearerAuth('JWT')
   verify(@Param('ref') ref: string) { return this.paymentsService.verify(ref); }
@@ -117,7 +131,12 @@ export class PaymentsController {
 }
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Payment])],
+  imports: [
+    TypeOrmModule.forFeature([Payment]),
+    PoliciesModule,
+    NotificationsModule,
+    UsersModule,
+  ],
   controllers: [PaymentsController],
   providers: [PaymentsService],
   exports: [PaymentsService],

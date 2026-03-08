@@ -7,9 +7,12 @@ import { IsUUID, IsNumber, IsPositive, IsOptional, IsBoolean } from 'class-valid
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { v4 as uuidv4 } from 'uuid';
 import { Policy, PolicyStatus } from './policy.entity';
-import { CommissionsService } from '../commissions/commissions.module';
-import { NotificationsService } from '../notifications/notifications.module';
-import { UsersService } from '../users/users.module';
+import { CommissionsService } from '../commissions/commissions.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { UsersService } from '../users/users.service';
+import { CommissionsModule } from '../commissions/commissions.module';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { UsersModule } from '../users/users.module';
 import { CurrentUser } from '../common/decorators';
 
 export class PurchasePolicyDto {
@@ -50,11 +53,18 @@ export class PoliciesService {
     await this.policyRepo.save(policy);
     this.logger.log(`Policy created: ${policyNumber}`);
 
-    await this.commissionsService.create({ policyId: policy.id, providerId: policy.providerId, grossPremium: Number(policy.premiumAmount), commissionRate, commissionAmount });
+    await this.commissionsService.create({
+      policyId: policy.id, providerId: policy.providerId,
+      grossPremium: Number(policy.premiumAmount), commissionRate, commissionAmount,
+    });
 
-    const user = await this.usersService.findById(userId);
-    if (user) await this.notificationsService.sendEmail(user, { subject: 'Policy Created', message: `Your policy ${policyNumber} was created. Complete payment to activate.` }).catch(() => {});
-
+    try {
+      const user = await this.usersService.findById(userId);
+      if (user) await this.notificationsService.sendEmail(user, {
+        subject: 'Policy Created',
+        message: `Your policy ${policyNumber} was created. Complete payment to activate.`,
+      });
+    } catch {}
     return policy;
   }
 
@@ -62,8 +72,13 @@ export class PoliciesService {
     const policy = await this.findById(policyId);
     policy.policyStatus = PolicyStatus.ACTIVE;
     await this.policyRepo.save(policy);
-    const user = await this.usersService.findById(policy.userId);
-    if (user) await this.notificationsService.sendEmail(user, { subject: '🎉 Policy Activated!', message: `Your policy ${policy.policyNumber} is now active.` }).catch(() => {});
+    try {
+      const user = await this.usersService.findById(policy.userId);
+      if (user) await this.notificationsService.sendEmail(user, {
+        subject: '🎉 Policy Activated!',
+        message: `Your policy ${policy.policyNumber} is now active.`,
+      });
+    } catch {}
     return policy;
   }
 
@@ -90,19 +105,30 @@ export class PoliciesController {
   constructor(private readonly policiesService: PoliciesService) {}
 
   @Post('purchase') @ApiOperation({ summary: 'Purchase a policy' })
-  purchase(@CurrentUser('id') userId: string, @Body() dto: PurchasePolicyDto) { return this.policiesService.purchase(userId, dto); }
+  purchase(@CurrentUser('id') userId: string, @Body() dto: PurchasePolicyDto) {
+    return this.policiesService.purchase(userId, dto);
+  }
 
   @Get() @ApiOperation({ summary: 'Get my policies' })
-  findAll(@CurrentUser('id') userId: string) { return this.policiesService.findByUser(userId); }
+  findAll(@CurrentUser('id') userId: string) {
+    return this.policiesService.findByUser(userId);
+  }
 
   @Get(':id') @ApiOperation({ summary: 'Get policy by ID' })
-  findOne(@Param('id') id: string) { return this.policiesService.findById(id); }
+  findOne(@Param('id') id: string) {
+    return this.policiesService.findById(id);
+  }
 }
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Policy])],
+  imports: [
+    TypeOrmModule.forFeature([Policy]),
+    CommissionsModule,
+    NotificationsModule,
+    UsersModule,
+  ],
   controllers: [PoliciesController],
   providers: [PoliciesService],
-  exports: [PoliciesService],
+  exports: [PoliciesService, TypeOrmModule],
 })
 export class PoliciesModule {}

@@ -1,7 +1,8 @@
-import { Module, Injectable } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { InjectRepository, TypeOrmModule } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { CommissionsService } from './commissions.service';
 
 export enum CommissionStatus { PENDING = 'pending', PROCESSING = 'processing', PAID = 'paid' }
 
@@ -19,26 +20,6 @@ export class Commission {
   @Column({ default: 'pending' }) status: string;
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' }) createdAt: Date;
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' }) updatedAt: Date;
-}
-
-@Injectable()
-export class CommissionsService {
-  constructor(@InjectRepository(Commission) private readonly repo: Repository<Commission>) {}
-
-  async create(data: { policyId: string; providerId: string; grossPremium: number; commissionRate: number; commissionAmount: number }) {
-    const platformFee = Number(data.grossPremium) * 0.02;
-    const netCommission = Number(data.commissionAmount) - platformFee;
-    const c = this.repo.create({ ...data, platformFee, netCommission });
-    return this.repo.save(c);
-  }
-
-  async getReport(filters?: { providerId?: string; startDate?: Date; endDate?: Date }) {
-    const all = await this.repo.find();
-    const totalGross = all.reduce((s, c) => s + Number(c.grossPremium), 0);
-    const totalCommission = all.reduce((s, c) => s + Number(c.commissionAmount), 0);
-    const totalNet = all.reduce((s, c) => s + Number(c.netCommission || 0), 0);
-    return { commissions: all, summary: { totalGross, totalCommission, totalNet, count: all.length } };
-  }
 }
 
 @Module({
