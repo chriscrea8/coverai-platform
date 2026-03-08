@@ -56,7 +56,7 @@ export default function NewClaimPage() {
   const inputStyle = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }
 
   return (
-    <div className="min-h-screen bg-ink px-4 py-12">
+    <div className="min-h-screen bg-ink px-4 py-8 md:py-12">
       <div className="max-w-xl mx-auto">
         <div className="text-center mb-10">
           <Link href="/" className="font-syne font-black text-xl">Cover<span className="text-accent">AI</span></Link>
@@ -65,7 +65,7 @@ export default function NewClaimPage() {
           <h1 className="font-syne font-black text-3xl">Submit a Claim</h1>
         </div>
 
-        <div className="p-8 rounded-2xl space-y-5" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="p-5 md:p-8 rounded-2xl space-y-5" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.08)' }}>
           {/* Policy selector */}
           <div>
             <label className="text-xs font-semibold text-muted uppercase tracking-wider block mb-1.5">Policy *</label>

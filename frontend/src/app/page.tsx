@@ -34,7 +34,7 @@ export default function HomePage() {
     <div className="noise-overlay min-h-screen">
       {/* Nav */}
       <nav style={{ background: 'rgba(10,15,30,0.85)', backdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
-        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-10 py-4">
+        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 md:px-10 py-3 md:py-4">
         <div className="font-syne font-black text-xl">Cover<span className="text-accent">AI</span></div>
         <div className="hidden md:flex items-center gap-1">
           {[['Features', 'features'], ['How It Works', 'how-it-works'], ['Pricing', 'pricing']].map(([label, id]) => (
@@ -66,7 +66,7 @@ export default function HomePage() {
           style={{ background: 'rgba(244,166,35,0.12)', border: '1px solid rgba(244,166,35,0.3)' }}>
           🚀 Launching in Nigeria · Expanding Across Africa
         </div>
-        <h1 className="font-syne font-black text-5xl md:text-7xl leading-tight tracking-tight max-w-4xl mb-6">
+        <h1 className="font-syne font-black text-4xl md:text-7xl leading-tight tracking-tight max-w-4xl mb-6">
           Insurance That Works<br />
           <span className="text-accent">For African</span> <span className="text-teal">Businesses</span>
         </h1>
@@ -86,7 +86,7 @@ export default function HomePage() {
           </Link>
         </div>
 
-        <div className="mt-16 grid grid-cols-3 max-w-xl w-full rounded-2xl overflow-hidden"
+        <div className="mt-10 md:mt-16 grid grid-cols-3 max-w-xs md:max-w-xl w-full rounded-2xl overflow-hidden"
           style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
           {[['10,000+', 'Businesses Protected'], ['₦2.4B', 'Claims Processed'], ['98%', 'Satisfaction Rate']].map(([n, l]) => (
             <div key={l} className="py-6 px-4 text-center" style={{ background: 'rgba(13,27,62,0.6)' }}>
@@ -162,7 +162,7 @@ export default function HomePage() {
             { name: 'Business', desc: 'For growing SMEs that need full management.', price: '₦4,999', per: '/month', features: ['Unlimited Policies', 'Priority Claims (48hr)', 'Full SME Dashboard', 'Payment Tracking', 'Phone Support'], featured: true },
             { name: 'Enterprise', desc: 'For large SMEs and fintech platforms.', price: 'Custom', per: 'Contact us', features: ['Everything in Business', 'Embedded Insurance API', 'Dedicated Manager', 'SLA Guarantee'] },
           ].map(p => (
-            <div key={p.name} className={`p-9 rounded-2xl relative ${(p as any).featured ? 'scale-105' : ''}`}
+            <div key={p.name} className={`p-7 md:p-9 rounded-2xl relative ${(p as any).featured ? 'md:scale-105' : ''}`}
               style={{ background: (p as any).featured ? 'rgba(26,58,143,0.3)' : 'rgba(10,15,30,0.7)', border: (p as any).featured ? '1px solid rgba(26,58,143,0.6)' : '1px solid rgba(255,255,255,0.07)' }}>
               {(p as any).featured && <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-accent text-ink text-xs font-black">Most Popular</div>}
               <div className="font-syne font-black text-xl mb-2">{p.name}</div>

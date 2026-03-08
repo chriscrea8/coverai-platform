@@ -1,6 +1,12 @@
 import type { Metadata } from 'next'
 import './globals.css'
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+}
+
 export const metadata: Metadata = {
   title: 'CoverAI — Insurance for African Businesses',
   description: 'AI-powered insurance platform for SMEs in Nigeria and across Africa.',

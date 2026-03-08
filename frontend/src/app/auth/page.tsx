@@ -38,15 +38,15 @@ function AuthForm() {
   const inputCls = "w-full px-4 py-3 rounded-xl text-sm text-white placeholder-muted outline-none transition-all focus:border-blue-500"
 
   return (
-    <div className="min-h-screen bg-ink flex items-center justify-center px-4"
+    <div className="min-h-screen bg-ink flex items-center justify-center px-4 py-8"
       style={{ background: 'radial-gradient(ellipse 70% 50% at 50% 0%, rgba(26,58,143,0.3) 0%, transparent 70%), #0A0F1E' }}>
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <Link href="/" className="font-syne font-black text-2xl">Cover<span className="text-accent">AI</span></Link>
           <p className="text-muted text-sm mt-2">{mode === 'login' ? 'Welcome back' : 'Create your account'}</p>
         </div>
 
-        <div className="p-8 rounded-2xl" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="p-5 md:p-8 rounded-2xl" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.08)' }}>
           {/* Tabs */}
           <div className="flex rounded-xl p-1 mb-7" style={{ background: 'rgba(255,255,255,0.05)' }}>
             {(['login', 'register'] as const).map(m => (
