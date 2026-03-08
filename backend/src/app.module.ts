@@ -21,41 +21,54 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { PartnersModule } from './partners/partners.module';
 import { AdminModule } from './admin/admin.module';
 import { FilesModule } from './files/files.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
-    // Config
     ConfigModule.forRoot({
       isGlobal: true,
       load: [appConfig, dbConfig, jwtConfig, redisConfig, awsConfig, paystackConfig, openaiConfig, emailConfig, twilioConfig],
     }),
-    // Database
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (cfg: ConfigService) => ({
-        type: 'postgres',
-        host: cfg.get('database.host'),
-        port: cfg.get('database.port'),
-        username: cfg.get('database.username'),
-        password: cfg.get('database.password'),
-        database: cfg.get('database.name'),
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: cfg.get('app.nodeEnv') === 'development',
-        logging: cfg.get('app.nodeEnv') === 'development',
-        ssl: cfg.get('app.nodeEnv') === 'production' ? { rejectUnauthorized: false } : false,
-      }),
+      useFactory: (cfg: ConfigService) => {
+        const dbUrl = process.env.DATABASE_URL;
+        if (dbUrl) {
+          return {
+            type: 'postgres',
+            url: dbUrl,
+            entities: [__dirname + '/**/*.entity{.ts,.js}'],
+            synchronize: false,
+            logging: false,
+            retryAttempts: 5,
+            retryDelay: 3000,
+            ssl: { rejectUnauthorized: false },
+            extra: { ssl: { rejectUnauthorized: false } },
+          };
+        }
+        return {
+          type: 'postgres',
+          host: cfg.get('database.host'),
+          port: cfg.get<number>('database.port'),
+          username: cfg.get('database.username'),
+          password: cfg.get('database.password'),
+          database: cfg.get('database.name'),
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          synchronize: false,
+          logging: false,
+          retryAttempts: 5,
+          retryDelay: 3000,
+          ssl: { rejectUnauthorized: false },
+          extra: { ssl: { rejectUnauthorized: false } },
+        };
+      },
     }),
-    // Rate Limiting
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (cfg: ConfigService) => ([{
-        ttl: cfg.get('THROTTLE_TTL', 60),
-        limit: cfg.get('THROTTLE_LIMIT', 100),
-      }]),
+      useFactory: () => ([{ ttl: 60000, limit: 100 }]),
     }),
-    // Cron Jobs
     ScheduleModule.forRoot(),
-    // Feature Modules
+    HealthModule,
     AuthModule,
     UsersModule,
     SmeModule,

@@ -1,31 +1,31 @@
 import { registerAs } from '@nestjs/config';
 
 export const appConfig = registerAs('app', () => ({
-  nodeEnv: process.env.NODE_ENV || 'development',
+  nodeEnv: process.env.NODE_ENV || 'production',
   port: parseInt(process.env.PORT, 10) || 3000,
   appUrl: process.env.APP_URL || 'http://localhost:3000',
-  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3001',
+  frontendUrl: process.env.FRONTEND_URL || 'https://coverai-platform.vercel.app',
 }));
 
 export const dbConfig = registerAs('database', () => ({
+  url: process.env.DATABASE_URL || undefined,
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT, 10) || 5432,
   username: process.env.DB_USERNAME || 'postgres',
   password: process.env.DB_PASSWORD,
-  name: process.env.DB_NAME || 'coverai_db',
+  name: process.env.DB_NAME || 'neondb',
 }));
 
 export const jwtConfig = registerAs('jwt', () => ({
-  secret: process.env.JWT_SECRET,
+  secret: process.env.JWT_SECRET || 'fallback_secret_change_in_prod',
   expiresIn: process.env.JWT_EXPIRES_IN || '15m',
-  refreshSecret: process.env.JWT_REFRESH_SECRET,
+  refreshSecret: process.env.JWT_REFRESH_SECRET || 'fallback_refresh_secret',
   refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
 }));
 
 export const redisConfig = registerAs('redis', () => ({
   host: process.env.REDIS_HOST || 'localhost',
   port: parseInt(process.env.REDIS_PORT, 10) || 6379,
-  password: process.env.REDIS_PASSWORD || undefined,
 }));
 
 export const awsConfig = registerAs('aws', () => ({
