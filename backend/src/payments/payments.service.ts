@@ -2,8 +2,6 @@ import { Injectable, Logger, BadRequestException, NotFoundException } from '@nes
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import { IsUUID, IsNumber, IsPositive, IsOptional, IsString } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import axios from 'axios';
 import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
@@ -11,13 +9,7 @@ import { Payment, PaymentStatus } from './payment.entity';
 import { PoliciesService } from '../policies/policies.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { UsersService } from '../users/users.service';
-
-export class CreatePaymentDto {
-  @ApiPropertyOptional() @IsOptional() @IsUUID() policyId?: string;
-  @ApiProperty() @IsNumber() @IsPositive() amount: number;
-  @ApiPropertyOptional() @IsOptional() @IsString() currency?: string;
-  @ApiPropertyOptional() @IsOptional() metadata?: Record<string, any>;
-}
+import { CreatePaymentDto } from './payments.dto';
 
 @Injectable()
 export class PaymentsService {

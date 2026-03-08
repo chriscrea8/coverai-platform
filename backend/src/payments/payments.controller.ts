@@ -2,7 +2,7 @@ import { Controller, Post, Get, Body, Headers, Req, Param, UseGuards } from '@ne
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
-import { CreatePaymentDto } from './payments.service';
+import { CreatePaymentDto } from './payments.dto';
 import { CurrentUser } from '../common/decorators';
 
 @ApiTags('Payments')
