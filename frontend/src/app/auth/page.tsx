@@ -1,11 +1,13 @@
 'use client'
+import { Suspense } from 'react'
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { authApi } from '@/lib/api'
 import { useAuthStore } from '@/lib/store'
 
-export default function AuthPage() {
+// Inner component that uses useSearchParams — must be inside Suspense
+function AuthForm() {
   const router = useRouter()
   const params = useSearchParams()
   const [mode, setMode] = useState<'login' | 'register'>(params.get('mode') === 'register' ? 'register' : 'login')
@@ -120,5 +122,23 @@ export default function AuthPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+// Loading fallback while Suspense resolves
+function AuthLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center" style={{ background: '#0A0F1E' }}>
+      <div className="text-muted text-sm">Loading...</div>
+    </div>
+  )
+}
+
+// Default export wraps the form in Suspense (required for useSearchParams in Next.js 14)
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<AuthLoading />}>
+      <AuthForm />
+    </Suspense>
   )
 }
