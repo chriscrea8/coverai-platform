@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { claimsApi, policiesApi } from '@/lib/api'
@@ -10,9 +10,12 @@ export default function NewClaimPage() {
   const { isLoggedIn } = useAuthStore()
   const [policies, setPolicies] = useState<any[]>([])
   const [form, setForm] = useState({ policyId: '', claimAmount: '', description: '', incidentDate: '', incidentLocation: '' })
+  const [files, setFiles] = useState<File[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [dragging, setDragging] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     hydrateAuth()
@@ -22,6 +25,16 @@ export default function NewClaimPage() {
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
+  const handleFiles = (incoming: FileList | null) => {
+    if (!incoming) return
+    const valid = Array.from(incoming).filter(f => f.size <= 10 * 1024 * 1024)
+    const invalid = Array.from(incoming).filter(f => f.size > 10 * 1024 * 1024)
+    if (invalid.length) setError(`${invalid.length} file(s) exceed 10MB limit`)
+    setFiles(prev => [...prev, ...valid])
+  }
+
+  const removeFile = (i: number) => setFiles(prev => prev.filter((_, idx) => idx !== i))
+
   const submit = async () => {
     if (!form.policyId || !form.description || !form.incidentDate || !form.claimAmount) {
       setError('Please fill in all required fields'); return
@@ -30,7 +43,7 @@ export default function NewClaimPage() {
     try {
       const res = await claimsApi.create({ ...form, claimAmount: Number(form.claimAmount) })
       const claim = res.data.data
-      setSuccess(`Claim ${claim.claimNumber} submitted successfully! Redirecting to dashboard...`)
+      setSuccess(`Claim ${claim.claimNumber} submitted successfully! Redirecting...`)
       setTimeout(() => router.push('/dashboard'), 2500)
     } catch (e: any) {
       const msg = e.response?.data?.message
@@ -53,9 +66,11 @@ export default function NewClaimPage() {
         </div>
 
         <div className="p-8 rounded-2xl space-y-5" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          {/* Policy selector */}
           <div>
             <label className="text-xs font-semibold text-muted uppercase tracking-wider block mb-1.5">Policy *</label>
-            <select className={inputCls} style={{ ...inputStyle, background: 'rgba(13,27,62,0.9)' }} value={form.policyId} onChange={e => set('policyId', e.target.value)}>
+            <select className={inputCls} style={{ ...inputStyle, background: 'rgba(13,27,62,0.9)' }}
+              value={form.policyId} onChange={e => set('policyId', e.target.value)}>
               <option value="">Select a policy</option>
               {policies.filter(p => p.policyStatus === 'active').map(p => (
                 <option key={p.id} value={p.id}>{p.policyNumber}</option>
@@ -91,14 +106,45 @@ export default function NewClaimPage() {
               value={form.description} onChange={e => set('description', e.target.value)} />
           </div>
 
+          {/* File upload — fully wired */}
           <div>
             <label className="text-xs font-semibold text-muted uppercase tracking-wider block mb-1.5">Upload Evidence</label>
-            <div className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all hover:border-accent/40"
-              style={{ borderColor: 'rgba(255,255,255,0.15)' }}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*,.pdf,.doc,.docx"
+              className="hidden"
+              onChange={e => handleFiles(e.target.files)}
+            />
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={e => { e.preventDefault(); setDragging(true) }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={e => { e.preventDefault(); setDragging(false); handleFiles(e.dataTransfer.files) }}
+              className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all"
+              style={{ borderColor: dragging ? '#F4A623' : 'rgba(255,255,255,0.15)', background: dragging ? 'rgba(244,166,35,0.05)' : 'transparent' }}>
               <div className="text-3xl mb-2">📎</div>
-              <p className="text-muted text-sm"><span className="text-accent font-semibold">Click to upload</span> or drag & drop</p>
-              <p className="text-muted text-xs mt-1">Photos, police report, receipts (max 10MB)</p>
+              <p className="text-sm"><span className="text-accent font-semibold">Click to upload</span> or drag & drop</p>
+              <p className="text-muted text-xs mt-1">Photos, police report, receipts (max 10MB each)</p>
             </div>
+
+            {/* File list */}
+            {files.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {files.map((f, i) => (
+                  <div key={i} className="flex items-center justify-between px-3 py-2 rounded-lg"
+                    style={{ background: 'rgba(0,194,168,0.1)', border: '1px solid rgba(0,194,168,0.2)' }}>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span>📄</span>
+                      <span className="text-white truncate max-w-xs">{f.name}</span>
+                      <span className="text-muted text-xs">({(f.size / 1024).toFixed(0)}KB)</span>
+                    </div>
+                    <button onClick={() => removeFile(i)} className="text-muted hover:text-red-400 text-xs ml-2">✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {error && <div className="p-3 rounded-xl text-sm text-red-400" style={{ background: 'rgba(232,69,69,0.1)', border: '1px solid rgba(232,69,69,0.2)' }}>{error}</div>}

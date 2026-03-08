@@ -8,9 +8,11 @@ export default function HomePage() {
   const router = useRouter()
   const { isLoggedIn } = useAuthStore()
 
-  useEffect(() => {
-    hydrateAuth()
-  }, [])
+  useEffect(() => { hydrateAuth() }, [])
+
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+  }
 
   const features = [
     { icon: '🤖', title: 'AI Insurance Assistant', desc: 'Get instant answers about any insurance product in plain English. No jargon, no confusion.', color: '#00C2A8' },
@@ -22,10 +24,10 @@ export default function HomePage() {
   ]
 
   const steps = [
-    { icon: '💬', title: 'Ask the AI', desc: 'Tell our AI about your business. It understands local context.' },
-    { icon: '🎯', title: 'Get Matched', desc: 'Receive tailored policy recommendations in seconds.' },
-    { icon: '✅', title: 'Buy Coverage', desc: 'Purchase your policy digitally. Instant documentation.' },
-    { icon: '📱', title: 'Manage & Claim', desc: 'Track everything in your dashboard. File claims anytime.' },
+    { icon: '💬', title: 'Ask the AI', desc: 'Tell ARIA about your business — it understands the Nigerian market and local risks.' },
+    { icon: '🎯', title: 'Get Matched', desc: 'Receive tailored policy recommendations in seconds. No paperwork yet.' },
+    { icon: '✅', title: 'Buy Coverage', desc: 'Purchase your policy digitally with Paystack. Instant documentation sent to your email.' },
+    { icon: '📱', title: 'Manage & Claim', desc: 'Track renewals, submit claims with photos, and get paid — all from your dashboard.' },
   ]
 
   return (
@@ -35,8 +37,11 @@ export default function HomePage() {
         className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-10 py-4">
         <div className="font-syne font-black text-xl">Cover<span className="text-accent">AI</span></div>
         <div className="hidden md:flex items-center gap-1">
-          {['Features', 'How It Works', 'Pricing'].map(t => (
-            <button key={t} className="px-4 py-2 rounded-lg text-sm text-muted hover:text-white hover:bg-white/5 transition-all">{t}</button>
+          {[['Features', 'features'], ['How It Works', 'how-it-works'], ['Pricing', 'pricing']].map(([label, id]) => (
+            <button key={id} onClick={() => scrollTo(id)}
+              className="px-4 py-2 rounded-lg text-sm text-muted hover:text-white hover:bg-white/5 transition-all">
+              {label}
+            </button>
           ))}
         </div>
         <div className="flex items-center gap-3">
@@ -66,7 +71,7 @@ export default function HomePage() {
           <span className="text-accent">For African</span> <span className="text-teal">Businesses</span>
         </h1>
         <p className="text-muted text-lg max-w-xl leading-relaxed mb-10">
-          AI-powered insurance for SMEs. Understand your options, get covered instantly, and manage claims — all in one platform.
+          AI-powered insurance for SMEs. Understand your options in plain language, get covered instantly, and manage claims — all in one platform.
         </p>
         <div className="flex gap-4 flex-wrap justify-center">
           <Link href="/chat"
@@ -81,7 +86,6 @@ export default function HomePage() {
           </Link>
         </div>
 
-        {/* Stats */}
         <div className="mt-16 grid grid-cols-3 max-w-xl w-full rounded-2xl overflow-hidden"
           style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
           {[['10,000+', 'Businesses Protected'], ['₦2.4B', 'Claims Processed'], ['98%', 'Satisfaction Rate']].map(([n, l]) => (
@@ -94,7 +98,7 @@ export default function HomePage() {
       </section>
 
       {/* Features */}
-      <section className="py-24 px-6" style={{ background: '#0D1B3E' }}>
+      <section id="features" className="py-24 px-6" style={{ background: '#0D1B3E' }}>
         <div className="text-center mb-14">
           <span className="inline-block px-4 py-1 rounded-full text-xs font-semibold text-teal tracking-widest uppercase mb-4"
             style={{ background: 'rgba(0,194,168,0.12)', border: '1px solid rgba(0,194,168,0.25)' }}>Why CoverAI</span>
@@ -102,7 +106,7 @@ export default function HomePage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-6xl mx-auto">
           {features.map(f => (
-            <div key={f.title} className="p-8 rounded-2xl transition-all hover:-translate-y-1 group"
+            <div key={f.title} className="p-8 rounded-2xl transition-all hover:-translate-y-1"
               style={{ background: 'rgba(10,15,30,0.7)', border: '1px solid rgba(255,255,255,0.07)' }}>
               <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-5"
                 style={{ background: f.color + '20' }}>{f.icon}</div>
@@ -114,11 +118,12 @@ export default function HomePage() {
       </section>
 
       {/* How it works */}
-      <section className="py-24 px-6 bg-ink">
+      <section id="how-it-works" className="py-24 px-6 bg-ink">
         <div className="text-center mb-14">
           <span className="inline-block px-4 py-1 rounded-full text-xs font-semibold text-accent tracking-widest uppercase mb-4"
             style={{ background: 'rgba(244,166,35,0.12)', border: '1px solid rgba(244,166,35,0.3)' }}>Process</span>
           <h2 className="font-syne font-black text-3xl md:text-5xl tracking-tight">How It Works</h2>
+          <p className="text-muted mt-3 max-w-lg mx-auto">From zero to fully insured in under 10 minutes. No insurance knowledge required.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
           {steps.map((s, i) => (
@@ -144,7 +149,7 @@ export default function HomePage() {
       </section>
 
       {/* Pricing */}
-      <section className="py-24 px-6" style={{ background: '#0D1B3E' }}>
+      <section id="pricing" className="py-24 px-6" style={{ background: '#0D1B3E' }}>
         <div className="text-center mb-14">
           <span className="inline-block px-4 py-1 rounded-full text-xs font-semibold text-teal tracking-widest uppercase mb-4"
             style={{ background: 'rgba(0,194,168,0.12)', border: '1px solid rgba(0,194,168,0.25)' }}>Pricing</span>
