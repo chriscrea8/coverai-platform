@@ -6,4 +6,3 @@ dist/
 .next/
 *.log
 .DS_Store
-coverage/
