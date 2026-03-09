@@ -45,7 +45,7 @@ export class AdminService {
     const qb = this.userRepo.createQueryBuilder('u').orderBy('u.createdAt', 'DESC').take(100);
     if (filters.role) qb.andWhere('u.role = :role', { role: filters.role });
     const users = await qb.getMany();
-    return users.map(u => { const { passwordHash, refreshTokenHash, ...safe } = u as any; return safe; });
+    return users.map(u => { const { passwordHash, refreshTokenHash, passwordResetToken, emailVerificationOtp, emailOtpExpires, kycIdNumber, ...safe } = u as any; return safe; });
   }
 
   async suspendUser(userId: string) {

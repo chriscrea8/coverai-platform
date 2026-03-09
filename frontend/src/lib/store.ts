@@ -7,6 +7,8 @@ interface User {
   phone?: string
   role: string
   status: string
+  emailVerified?: boolean
+  kycStatus?: string
 }
 
 interface AuthState {

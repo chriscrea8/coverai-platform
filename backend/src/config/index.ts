@@ -16,12 +16,19 @@ export const dbConfig = registerAs('database', () => ({
   name: process.env.DB_NAME || 'neondb',
 }));
 
-export const jwtConfig = registerAs('jwt', () => ({
-  secret: process.env.JWT_SECRET || 'fallback_secret_change_in_prod',
-  expiresIn: process.env.JWT_EXPIRES_IN || '15m',
-  refreshSecret: process.env.JWT_REFRESH_SECRET || 'fallback_refresh_secret',
-  refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
-}));
+export const jwtConfig = registerAs('jwt', () => {
+  if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('JWT_SECRET and JWT_REFRESH_SECRET must be set in production');
+    }
+  }
+  return {
+    secret: process.env.JWT_SECRET || 'dev_only_secret_not_for_production',
+    expiresIn: process.env.JWT_EXPIRES_IN || '15m',
+    refreshSecret: process.env.JWT_REFRESH_SECRET || 'dev_only_refresh_secret_not_for_production',
+    refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+  };
+});
 
 export const redisConfig = registerAs('redis', () => ({
   host: process.env.REDIS_HOST || 'localhost',

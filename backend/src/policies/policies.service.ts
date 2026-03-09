@@ -103,6 +103,14 @@ export class PoliciesService {
     return policy;
   }
 
+  async findByIdForUser(id: string, userId: string): Promise<Policy> {
+    const policy = await this.policyRepo.findOne({ where: { id } });
+    if (!policy) throw new NotFoundException('Policy not found');
+    // Security: users can only view their own policies
+    if (policy.userId !== userId) throw new NotFoundException('Policy not found');
+    return policy;
+  }
+
   async findAll(filters?: any): Promise<Policy[]> {
     return this.policyRepo.find({
       order: { createdAt: 'DESC' },

@@ -36,12 +36,20 @@ export class PaymentsService {
 
     try {
       const secretKey = this.configService.get('paystack.secretKey');
+      const frontendUrl = this.configService.get('app.frontendUrl') || 'https://coverai-platform.vercel.app';
+      const callbackUrl = dto.callbackUrl || `${frontendUrl}/payment/success?reference=${reference}&policyId=${dto.policyId || ''}`;
       const response = await axios.post('https://api.paystack.co/transaction/initialize', {
         email: user.email,
         amount: Math.round(Number(dto.amount) * 100),
         reference,
         currency: payment.currency,
-        metadata: { payment_id: payment.id, policy_id: dto.policyId, user_id: userId },
+        callback_url: callbackUrl,
+        metadata: {
+          payment_id: payment.id,
+          policy_id: dto.policyId,
+          user_id: userId,
+          cancel_action: `${frontendUrl}/dashboard`,
+        },
       }, { headers: { Authorization: `Bearer ${secretKey}`, 'Content-Type': 'application/json' } });
 
       const { authorization_url, access_code } = response.data.data;

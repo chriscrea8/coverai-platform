@@ -1,30 +1,56 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { policiesApi, claimsApi, paymentsApi } from '@/lib/api'
 import { useAuthStore, hydrateAuth } from '@/lib/store'
+import { Suspense } from 'react'
 
 const NAV_ITEMS = [
-  { id: 'overview', icon: '📊', label: 'Overview' },
-  { id: 'policies', icon: '📋', label: 'My Policies' },
-  { id: 'claims', icon: '🛡️', label: 'Claims' },
-  { id: 'payments', icon: '💳', label: 'Payments' },
+  { id: 'overview',  icon: '📊', label: 'Overview'    },
+  { id: 'policies',  icon: '📋', label: 'My Policies' },
+  { id: 'claims',    icon: '🛡️', label: 'Claims'      },
+  { id: 'payments',  icon: '💳', label: 'Payments'    },
 ]
 
-export default function DashboardPage() {
+const STATUS_COLOR: Record<string, string> = {
+  active: '#2EC97E', pending: '#F4A623', expired: '#E84545', lapsed: '#E84545', cancelled: '#E84545',
+  submitted: '#F4A623', approved: '#2EC97E', rejected: '#E84545', under_review: '#7C6BFF',
+  successful: '#2EC97E', failed: '#E84545',
+}
+
+function Badge({ status }: { status: string }) {
+  const c = STATUS_COLOR[status] || '#8492B4'
+  return (
+    <span className="px-2 py-0.5 rounded-full text-xs font-bold capitalize"
+      style={{ background: c + '20', color: c, border: `1px solid ${c}40` }}>
+      {status?.replace(/_/g, ' ')}
+    </span>
+  )
+}
+
+function DashboardInner() {
   const router = useRouter()
+  const params = useSearchParams()
   const { user, clearAuth, isLoggedIn } = useAuthStore()
   const [active, setActive] = useState('overview')
   const [menuOpen, setMenuOpen] = useState(false)
   const [policies, setPolicies] = useState<any[]>([])
-  const [claims, setClaims] = useState<any[]>([])
+  const [claims, setClaims]     = useState<any[]>([])
   const [payments, setPayments] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading]   = useState(true)
+  const [highlightPolicy, setHighlightPolicy] = useState(false)
+  const [dismissedVerification, setDismissedVerification] = useState(false)
 
   useEffect(() => {
     hydrateAuth()
     if (!isLoggedIn()) { router.push('/auth'); return }
+    // If coming from a successful purchase, highlight policies tab
+    if (params.get('highlight') === 'new-policy') {
+      setHighlightPolicy(true)
+      setActive('policies')
+      window.history.replaceState({}, '', '/dashboard')
+    }
     loadData()
   }, [])
 
@@ -34,62 +60,68 @@ export default function DashboardPage() {
       const [p, c, pay] = await Promise.allSettled([
         policiesApi.getAll(), claimsApi.getAll(), paymentsApi.getHistory(),
       ])
-      if (p.status === 'fulfilled') setPolicies(p.value.data.data || [])
-      if (c.status === 'fulfilled') setClaims(c.value.data.data || [])
-      if (pay.status === 'fulfilled') setPayments(pay.value.data.data || [])
+      if (p.status === 'fulfilled') setPolicies(p.value.data.data || p.value.data || [])
+      if (c.status === 'fulfilled') setClaims(c.value.data.data || c.value.data || [])
+      if (pay.status === 'fulfilled') setPayments(pay.value.data.data || pay.value.data || [])
     } catch {}
     setLoading(false)
   }
 
-  const logout = () => { clearAuth(); router.push('/') }
-  const navigate = (id: string) => { setActive(id); setMenuOpen(false) }
-
-  const statusColor: any = {
-    active: '#2EC97E', pending: '#F4A623', expired: '#E84545',
-    submitted: '#F4A623', approved: '#2EC97E', rejected: '#E84545', under_review: '#7C6BFF'
+  const logout = () => {
+    clearAuth()
+    router.push('/')
   }
 
+  const navigate = (id: string) => { setActive(id); setMenuOpen(false) }
+
   const kpis = [
-    { label: 'Active Policies', value: policies.filter(p => p.policyStatus === 'active').length, icon: '📋' },
-    { label: 'Open Claims', value: claims.filter(c => ['submitted','under_review'].includes(c.status)).length, icon: '🛡️' },
-    { label: 'Total Payments', value: `₦${payments.reduce((s, p) => s + (p.paymentStatus === 'successful' ? Number(p.amount) : 0), 0).toLocaleString()}`, icon: '💳' },
-    { label: 'Total Policies', value: policies.length, icon: '📊' },
+    { label: 'Active Policies', value: policies.filter(p => p.policyStatus === 'active').length, icon: '📋', tab: 'policies' },
+    { label: 'Open Claims',     value: claims.filter(c => ['submitted','under_review'].includes(c.status)).length, icon: '🛡️', tab: 'claims' },
+    { label: 'Total Paid',      value: `₦${payments.filter(p => p.paymentStatus === 'successful').reduce((s, p) => s + Number(p.amount), 0).toLocaleString()}`, icon: '💳', tab: 'payments' },
+    { label: 'Total Policies',  value: policies.length, icon: '📊', tab: 'policies' },
   ]
 
+  const showVerificationBanner = user && !(user as any).emailVerified && !dismissedVerification
+
   return (
-    <div className="min-h-screen bg-ink flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: '#080D1A' }}>
 
       {/* ── Mobile top bar ── */}
       <header className="flex items-center justify-between px-4 py-3 md:hidden sticky top-0 z-40"
-        style={{ background: 'rgba(13,27,62,0.97)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        style={{ background: 'rgba(13,27,62,.97)', borderBottom: '1px solid rgba(255,255,255,.07)' }}>
         <Link href="/" className="font-syne font-black text-lg">Cover<span className="text-accent">AI</span></Link>
-        <button onClick={() => setMenuOpen(o => !o)} className="w-9 h-9 flex flex-col items-center justify-center gap-1.5 rounded-lg"
-          style={{ background: 'rgba(255,255,255,0.06)' }}>
-          <span className={`w-5 h-0.5 bg-white rounded transition-all ${menuOpen ? 'rotate-45 translate-y-2' : ''}`} />
-          <span className={`w-5 h-0.5 bg-white rounded transition-all ${menuOpen ? 'opacity-0' : ''}`} />
-          <span className={`w-5 h-0.5 bg-white rounded transition-all ${menuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
-        </button>
+        <div className="flex items-center gap-2">
+          <Link href="/settings" className="w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:text-white transition-all"
+            style={{ background: 'rgba(255,255,255,.06)' }}>⚙️</Link>
+          <button onClick={() => setMenuOpen(o => !o)} className="w-9 h-9 flex flex-col items-center justify-center gap-1.5 rounded-lg"
+            style={{ background: 'rgba(255,255,255,.06)' }}>
+            <span className={`w-5 h-0.5 bg-white rounded transition-all ${menuOpen ? 'rotate-45 translate-y-2' : ''}`} />
+            <span className={`w-5 h-0.5 bg-white rounded transition-all ${menuOpen ? 'opacity-0' : ''}`} />
+            <span className={`w-5 h-0.5 bg-white rounded transition-all ${menuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+          </button>
+        </div>
       </header>
 
       {/* ── Mobile slide-down menu ── */}
       {menuOpen && (
-        <div className="md:hidden fixed inset-0 z-30 top-[52px]" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setMenuOpen(false)}>
-          <div className="px-4 pt-2 pb-4" style={{ background: 'rgba(13,27,62,0.99)' }} onClick={e => e.stopPropagation()}>
+        <div className="md:hidden fixed inset-0 z-30 top-[52px]" style={{ background: 'rgba(0,0,0,.6)' }} onClick={() => setMenuOpen(false)}>
+          <div className="px-4 pt-2 pb-4" style={{ background: 'rgba(13,27,62,.99)' }} onClick={e => e.stopPropagation()}>
             {NAV_ITEMS.map(m => (
               <button key={m.id} onClick={() => navigate(m.id)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium mb-1 text-left transition-all ${active === m.id ? 'text-white' : 'text-muted'}`}
-                style={active === m.id ? { background: 'rgba(26,58,143,0.4)' } : {}}>
+                style={active === m.id ? { background: 'rgba(26,58,143,.4)' } : {}}>
                 <span className="text-base">{m.icon}</span>{m.label}
               </button>
             ))}
             <div className="border-t border-white/5 my-2" />
-            <Link href="/chat" onClick={() => setMenuOpen(false)}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted hover:text-white">
+            <Link href="/chat" onClick={() => setMenuOpen(false)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted hover:text-white">
               <span>🤖</span>AI Assistant
             </Link>
-            <Link href="/claims/new" onClick={() => setMenuOpen(false)}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted hover:text-white">
+            <Link href="/claims/new" onClick={() => setMenuOpen(false)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted hover:text-white">
               <span>⚡</span>New Claim
+            </Link>
+            <Link href="/settings" onClick={() => setMenuOpen(false)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted hover:text-white">
+              <span>⚙️</span>Settings
             </Link>
             <button onClick={logout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-red-400">
               <span>🚪</span>Sign Out
@@ -101,13 +133,13 @@ export default function DashboardPage() {
       <div className="flex flex-1">
         {/* ── Desktop sidebar ── */}
         <aside className="hidden md:flex w-60 shrink-0 sticky top-0 h-screen flex-col py-6 px-4"
-          style={{ background: 'rgba(13,27,62,0.95)', borderRight: '1px solid rgba(255,255,255,0.07)' }}>
+          style={{ background: 'rgba(13,27,62,.95)', borderRight: '1px solid rgba(255,255,255,.07)' }}>
           <Link href="/" className="font-syne font-black text-xl px-2 mb-8">Cover<span className="text-accent">AI</span></Link>
           <nav className="flex flex-col gap-1 flex-1">
             {NAV_ITEMS.map(m => (
               <button key={m.id} onClick={() => setActive(m.id)}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full text-left transition-all ${active === m.id ? 'text-white' : 'text-muted hover:text-white hover:bg-white/5'}`}
-                style={active === m.id ? { background: 'rgba(26,58,143,0.4)' } : {}}>
+                style={active === m.id ? { background: 'rgba(26,58,143,.4)' } : {}}>
                 <span>{m.icon}</span>{m.label}
               </button>
             ))}
@@ -118,21 +150,71 @@ export default function DashboardPage() {
             <Link href="/claims/new" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted hover:text-white hover:bg-white/5 transition-all">
               <span>⚡</span>New Claim
             </Link>
+            <Link href="/coverage" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted hover:text-white hover:bg-white/5 transition-all">
+              <span>🛒</span>Get Coverage
+            </Link>
             {user?.role === 'admin' && (
               <Link href="/admin" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-red-400 hover:bg-red-400/10 transition-all mt-2"
-                style={{ border: '1px solid rgba(232,69,69,0.2)' }}>
+                style={{ border: '1px solid rgba(232,69,69,.2)' }}>
                 <span>🔐</span>Admin Panel
               </Link>
             )}
           </nav>
-          <button onClick={logout} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-muted hover:text-red-400 transition-all">
-            <span>🚪</span>Sign Out
-          </button>
+          <div className="border-t border-white/5 pt-3 space-y-0.5">
+            <Link href="/settings" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-muted hover:text-white hover:bg-white/5 transition-all">
+              <span>⚙️</span>Settings
+            </Link>
+            <button onClick={logout} className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-muted hover:text-red-400 transition-all w-full text-left">
+              <span>🚪</span>Sign Out
+            </button>
+          </div>
         </aside>
 
         {/* ── Main content ── */}
         <main className="flex-1 p-4 md:p-8 overflow-auto min-w-0">
-          <div className="mb-6 md:mb-8">
+
+          {/* Email verification banner */}
+          {showVerificationBanner && (
+            <div className="mb-5 p-4 rounded-2xl flex items-start gap-4 relative"
+              style={{ background: 'rgba(244,166,35,.08)', border: '1px solid rgba(244,166,35,.25)' }}>
+              <span className="text-xl shrink-0">📧</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-sm mb-0.5">Verify your email to unlock all features</div>
+                <p className="text-muted text-xs">Purchasing policies, filing claims, and receiving notifications requires a verified email.</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Link href="/settings?tab=security"
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold hover:brightness-110 transition-all"
+                  style={{ background: '#F4A623', color: '#0A0F1E' }}>
+                  Verify Now
+                </Link>
+                <button onClick={() => setDismissedVerification(true)}
+                  className="w-6 h-6 flex items-center justify-center rounded text-muted hover:text-white transition-all"
+                  style={{ background: 'rgba(255,255,255,.08)' }}>✕</button>
+              </div>
+            </div>
+          )}
+
+          {/* Newly purchased policy banner */}
+          {highlightPolicy && policies.length > 0 && (
+            <div className="mb-5 p-4 rounded-2xl flex items-start gap-4 relative"
+              style={{ background: 'rgba(46,201,126,.08)', border: '1px solid rgba(46,201,126,.3)' }}>
+              <span className="text-2xl shrink-0">🎉</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-syne font-bold text-sm mb-0.5" style={{ color: '#2EC97E' }}>Your new policy is live!</div>
+                <p className="text-muted text-xs">
+                  <strong className="text-white">{policies[0]?.policyNumber}</strong> is now{' '}
+                  <span style={{ color: '#2EC97E' }}>active</span> and protecting your business.
+                  Policy documents will be sent to your email within 24 hours.
+                </p>
+              </div>
+              <button onClick={() => setHighlightPolicy(false)}
+                className="w-6 h-6 flex items-center justify-center rounded text-muted hover:text-white transition-all shrink-0"
+                style={{ background: 'rgba(255,255,255,.08)' }}>✕</button>
+            </div>
+          )}
+
+          <div className="mb-6">
             <h1 className="font-syne font-black text-xl md:text-2xl">Good day, {user?.name?.split(' ')[0] || 'there'} 👋</h1>
             <p className="text-muted text-sm mt-1">Here's your insurance overview</p>
           </div>
@@ -140,21 +222,26 @@ export default function DashboardPage() {
           {/* ── Overview ── */}
           {active === 'overview' && (
             <>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
                 {kpis.map(k => (
-                  <div key={k.label} className="p-4 md:p-5 rounded-2xl" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                    <div className="text-xl md:text-2xl mb-2 md:mb-3">{k.icon}</div>
-                    <div className="font-syne font-black text-xl md:text-2xl truncate">{loading ? '—' : k.value}</div>
+                  <button key={k.label} onClick={() => setActive(k.tab)}
+                    className="p-4 md:p-5 rounded-2xl text-left transition-all hover:-translate-y-0.5 hover:brightness-110"
+                    style={{ background: 'rgba(13,27,62,.8)', border: '1px solid rgba(255,255,255,.07)' }}>
+                    <div className="text-xl mb-2">{k.icon}</div>
+                    <div className="font-syne font-black text-xl">{loading ? '—' : k.value}</div>
                     <div className="text-muted text-xs mt-1 uppercase tracking-wider font-semibold leading-tight">{k.label}</div>
-                  </div>
+                  </button>
                 ))}
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5">
-                <div className="p-5 md:p-6 rounded-2xl" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                  <h3 className="font-syne font-bold mb-4 md:mb-5">📋 Recent Policies</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                <div className="p-5 rounded-2xl" style={{ background: 'rgba(13,27,62,.8)', border: '1px solid rgba(255,255,255,.07)' }}>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-syne font-bold">📋 Recent Policies</h3>
+                    <button onClick={() => setActive('policies')} className="text-xs text-accent hover:underline">View all</button>
+                  </div>
                   {policies.length === 0 ? (
-                    <div className="text-center py-6 md:py-8">
+                    <div className="text-center py-8">
                       <p className="text-muted text-sm mb-4">No policies yet</p>
                       <Link href="/coverage" className="px-4 py-2 rounded-xl bg-accent text-ink text-sm font-bold inline-block">Get Coverage</Link>
                     </div>
@@ -162,23 +249,27 @@ export default function DashboardPage() {
                     <div key={p.id} className="flex items-center justify-between py-3 border-b border-white/5 last:border-0 gap-2">
                       <div className="min-w-0">
                         <div className="font-semibold text-sm truncate">{p.policyNumber}</div>
-                        <div className="text-muted text-xs mt-0.5">₦{Number(p.premiumAmount).toLocaleString()}</div>
+                        <div className="text-muted text-xs mt-0.5 truncate">
+                          {p.policyDetails?.planName || 'Insurance Policy'} · ₦{Number(p.premiumAmount).toLocaleString()}
+                        </div>
                       </div>
-                      <span className="px-2 py-1 rounded-full text-xs font-bold shrink-0"
-                        style={{ background: (statusColor[p.policyStatus] || '#8492B4') + '20', color: statusColor[p.policyStatus] || '#8492B4' }}>
-                        {p.policyStatus}
-                      </span>
+                      <Badge status={p.policyStatus} />
                     </div>
                   ))}
                 </div>
 
-                <div className="p-5 md:p-6 rounded-2xl" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                  <h3 className="font-syne font-bold mb-4 md:mb-5">🛡️ Recent Claims</h3>
+                <div className="p-5 rounded-2xl" style={{ background: 'rgba(13,27,62,.8)', border: '1px solid rgba(255,255,255,.07)' }}>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-syne font-bold">🛡️ Recent Claims</h3>
+                    <button onClick={() => setActive('claims')} className="text-xs text-accent hover:underline">View all</button>
+                  </div>
                   {claims.length === 0 ? (
-                    <div className="text-center py-6 md:py-8">
-                      <p className="text-muted text-sm mb-4">No claims submitted</p>
+                    <div className="text-center py-8">
+                      <p className="text-muted text-sm mb-4">No claims yet</p>
                       <Link href="/claims/new" className="px-4 py-2 rounded-xl text-sm font-bold inline-block"
-                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)' }}>Submit Claim</Link>
+                        style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.14)' }}>
+                        Submit Claim
+                      </Link>
                     </div>
                   ) : claims.slice(0, 4).map(c => (
                     <div key={c.id} className="flex items-center justify-between py-3 border-b border-white/5 last:border-0 gap-2">
@@ -186,20 +277,16 @@ export default function DashboardPage() {
                         <div className="font-semibold text-sm truncate">{c.claimNumber}</div>
                         <div className="text-muted text-xs mt-0.5">₦{Number(c.claimAmount).toLocaleString()}</div>
                       </div>
-                      <span className="px-2 py-1 rounded-full text-xs font-bold shrink-0"
-                        style={{ background: (statusColor[c.status] || '#8492B4') + '20', color: statusColor[c.status] || '#8492B4' }}>
-                        {c.status}
-                      </span>
+                      <Badge status={c.status} />
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Mobile quick actions */}
-              <div className="mt-4 grid grid-cols-2 gap-3 md:hidden">
+              <div className="grid grid-cols-2 gap-3 md:hidden">
                 <Link href="/coverage" className="py-3 rounded-xl bg-accent text-ink text-sm font-bold text-center">Get Coverage</Link>
                 <Link href="/claims/new" className="py-3 rounded-xl text-white text-sm font-bold text-center"
-                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)' }}>New Claim</Link>
+                  style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.14)' }}>New Claim</Link>
               </div>
             </>
           )}
@@ -207,33 +294,107 @@ export default function DashboardPage() {
           {/* ── Policies ── */}
           {active === 'policies' && (
             <div>
-              <div className="flex justify-between items-center mb-5 md:mb-6">
+              <div className="flex justify-between items-center mb-5">
                 <h2 className="font-syne font-bold text-lg md:text-xl">My Policies</h2>
                 <Link href="/coverage" className="px-4 py-2 rounded-xl bg-accent text-ink text-sm font-bold">+ Get Coverage</Link>
               </div>
-              {loading ? <p className="text-muted">Loading...</p> : policies.length === 0 ? (
-                <div className="text-center py-16 md:py-20">
+              {loading ? <p className="text-muted">Loading…</p> : policies.length === 0 ? (
+                <div className="text-center py-16">
                   <div className="text-5xl mb-4">📋</div>
                   <p className="text-muted mb-6">No policies yet. Get your first coverage!</p>
                   <Link href="/coverage" className="px-6 py-3 rounded-xl bg-accent text-ink font-bold inline-block">Browse Plans</Link>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {policies.map(p => (
-                    <div key={p.id} className="p-4 md:p-5 rounded-2xl" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                      <div className="flex justify-between items-start gap-3">
-                        <div className="min-w-0">
-                          <div className="font-syne font-bold truncate">{p.policyNumber}</div>
-                          <div className="text-muted text-sm mt-1">₦{Number(p.premiumAmount).toLocaleString()} premium</div>
-                          {p.startDate && <div className="text-muted text-xs mt-1">{new Date(p.startDate).toLocaleDateString()} → {p.endDate ? new Date(p.endDate).toLocaleDateString() : 'N/A'}</div>}
+                <div className="space-y-4">
+                  {policies.map((p, i) => {
+                    const isNew = highlightPolicy && i === 0
+                    const nextPayment = p.endDate
+                      ? new Date(new Date(p.endDate).getTime() - 30 * 24 * 60 * 60 * 1000)
+                      : null
+
+                    return (
+                      <div key={p.id} className="p-5 rounded-2xl transition-all"
+                        style={{
+                          background: 'rgba(13,27,62,.8)',
+                          border: isNew ? '1px solid rgba(46,201,126,.4)' : '1px solid rgba(255,255,255,.07)',
+                          boxShadow: isNew ? '0 0 20px rgba(46,201,126,.1)' : 'none'
+                        }}>
+                        {isNew && (
+                          <div className="text-xs font-bold mb-3 flex items-center gap-1.5" style={{ color: '#2EC97E' }}>
+                            ✦ New — Just Purchased
+                          </div>
+                        )}
+                        <div className="flex justify-between items-start gap-3 mb-4">
+                          <div className="min-w-0">
+                            <div className="font-syne font-bold text-base truncate">{p.policyNumber}</div>
+                            <div className="text-muted text-sm mt-0.5">{p.policyDetails?.planName || 'Insurance Policy'}</div>
+                          </div>
+                          <Badge status={p.policyStatus} />
                         </div>
-                        <span className="px-3 py-1 rounded-full text-xs font-bold shrink-0"
-                          style={{ background: (statusColor[p.policyStatus] || '#8492B4') + '20', color: statusColor[p.policyStatus] || '#8492B4' }}>
-                          {p.policyStatus}
-                        </span>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                          {[
+                            { label: 'Annual Premium', value: `₦${Number(p.premiumAmount).toLocaleString()}` },
+                            { label: 'Coverage', value: p.coverageAmount ? `₦${Number(p.coverageAmount).toLocaleString()}` : 'As agreed' },
+                            { label: 'Start Date', value: p.startDate ? new Date(p.startDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Today' },
+                            { label: 'Expiry Date', value: p.endDate ? new Date(p.endDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '1 Year' },
+                          ].map(item => (
+                            <div key={item.label} className="p-3 rounded-xl" style={{ background: 'rgba(255,255,255,.04)' }}>
+                              <div className="text-muted text-xs mb-0.5">{item.label}</div>
+                              <div className="font-semibold text-sm">{item.value}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {nextPayment && (
+                          <div className="flex items-center gap-2 p-3 rounded-xl mb-4"
+                            style={{ background: 'rgba(244,166,35,.08)', border: '1px solid rgba(244,166,35,.2)' }}>
+                            <span className="text-sm">📅</span>
+                            <div className="text-xs">
+                              <span className="text-muted">Next renewal: </span>
+                              <strong style={{ color: '#F4A623' }}>
+                                {nextPayment.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
+                              </strong>
+                              <span className="text-muted"> ({Math.ceil((nextPayment.getTime() - Date.now()) / (24*60*60*1000))} days)</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {p.policyDetails?.answers && (
+                          <div className="flex gap-2 flex-wrap mb-4">
+                            {Object.values(p.policyDetails.answers).map((a: any, i: number) => (
+                              <span key={i} className="px-2 py-0.5 rounded-full text-xs"
+                                style={{ background: 'rgba(0,194,168,.1)', color: '#00C2A8', border: '1px solid rgba(0,194,168,.2)' }}>
+                                {a}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="flex gap-2 flex-wrap">
+                          {p.policyStatus === 'pending' && (
+                            <Link href="/dashboard?tab=payments"
+                              className="px-4 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
+                              style={{ background: '#F4A623', color: '#0A0F1E' }}>
+                              Complete Payment
+                            </Link>
+                          )}
+                          {p.documentUrl && (
+                            <a href={p.documentUrl} target="_blank" rel="noopener noreferrer"
+                              className="px-4 py-2 rounded-xl text-xs font-semibold transition-all"
+                              style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.12)', color: '#fff' }}>
+                              📄 Policy Doc
+                            </a>
+                          )}
+                          <Link href="/claims/new"
+                            className="px-4 py-2 rounded-xl text-xs font-semibold transition-all"
+                            style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.12)', color: '#fff' }}>
+                            File Claim
+                          </Link>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -242,29 +403,34 @@ export default function DashboardPage() {
           {/* ── Claims ── */}
           {active === 'claims' && (
             <div>
-              <div className="flex justify-between items-center mb-5 md:mb-6">
-                <h2 className="font-syne font-bold text-lg md:text-xl">Claims</h2>
+              <div className="flex justify-between items-center mb-5">
+                <h2 className="font-syne font-bold text-lg md:text-xl">My Claims</h2>
                 <Link href="/claims/new" className="px-4 py-2 rounded-xl bg-accent text-ink text-sm font-bold">+ New Claim</Link>
               </div>
-              {loading ? <p className="text-muted">Loading...</p> : claims.length === 0 ? (
-                <div className="text-center py-16 md:py-20">
+              {loading ? <p className="text-muted">Loading…</p> : claims.length === 0 ? (
+                <div className="text-center py-16">
                   <div className="text-5xl mb-4">🛡️</div>
-                  <p className="text-muted">No claims yet.</p>
+                  <p className="text-muted mb-6">No claims submitted yet.</p>
+                  <Link href="/claims/new" className="px-6 py-3 rounded-xl font-bold inline-block"
+                    style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)' }}>
+                    Submit a Claim
+                  </Link>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {claims.map(c => (
-                    <div key={c.id} className="p-4 md:p-5 rounded-2xl" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                      <div className="flex justify-between gap-3">
+                    <div key={c.id} className="p-5 rounded-2xl" style={{ background: 'rgba(13,27,62,.8)', border: '1px solid rgba(255,255,255,.07)' }}>
+                      <div className="flex justify-between gap-3 mb-3">
                         <div className="min-w-0">
                           <div className="font-syne font-bold truncate">{c.claimNumber}</div>
-                          <div className="text-muted text-sm mt-1 line-clamp-2">{c.description?.substring(0, 80)}</div>
-                          <div className="text-muted text-xs mt-1">₦{Number(c.claimAmount).toLocaleString()}</div>
+                          <div className="text-muted text-sm mt-0.5 line-clamp-1">{c.description?.substring(0, 80)}</div>
                         </div>
-                        <span className="px-2 py-1 rounded-full text-xs font-bold h-fit shrink-0"
-                          style={{ background: (statusColor[c.status] || '#8492B4') + '20', color: statusColor[c.status] || '#8492B4' }}>
-                          {c.status}
-                        </span>
+                        <Badge status={c.status} />
+                      </div>
+                      <div className="flex gap-4 text-xs text-muted">
+                        <span>Amount: <strong className="text-white">₦{Number(c.claimAmount).toLocaleString()}</strong></span>
+                        {c.incidentDate && <span>Incident: <strong className="text-white">{new Date(c.incidentDate).toLocaleDateString('en-NG')}</strong></span>}
+                        {c.reviewerNotes && <span className="line-clamp-1">Note: {c.reviewerNotes}</span>}
                       </div>
                     </div>
                   ))}
@@ -276,24 +442,24 @@ export default function DashboardPage() {
           {/* ── Payments ── */}
           {active === 'payments' && (
             <div>
-              <h2 className="font-syne font-bold text-lg md:text-xl mb-5 md:mb-6">Payment History</h2>
-              {loading ? <p className="text-muted">Loading...</p> : payments.length === 0 ? (
-                <div className="text-center py-16 md:py-20">
+              <h2 className="font-syne font-bold text-lg md:text-xl mb-5">Payment History</h2>
+              {loading ? <p className="text-muted">Loading…</p> : payments.length === 0 ? (
+                <div className="text-center py-16">
                   <div className="text-5xl mb-4">💳</div>
                   <p className="text-muted">No payment history yet.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {payments.map(p => (
-                    <div key={p.id} className="p-4 md:p-5 rounded-2xl flex justify-between items-center gap-3"
-                      style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                    <div key={p.id} className="p-4 rounded-2xl flex items-center justify-between gap-3"
+                      style={{ background: 'rgba(13,27,62,.8)', border: '1px solid rgba(255,255,255,.07)' }}>
                       <div className="min-w-0">
-                        <div className="font-semibold text-sm truncate">{p.paymentReference}</div>
-                        <div className="text-muted text-xs mt-1">{new Date(p.createdAt).toLocaleDateString()}</div>
+                        <div className="font-semibold text-sm font-mono truncate">{p.paymentReference}</div>
+                        <div className="text-muted text-xs mt-0.5">{new Date(p.createdAt).toLocaleDateString('en-NG', { dateStyle: 'medium' })}</div>
                       </div>
                       <div className="text-right shrink-0">
-                        <div className="font-syne font-bold text-sm">₦{Number(p.amount).toLocaleString()}</div>
-                        <span className="text-xs" style={{ color: p.paymentStatus === 'successful' ? '#2EC97E' : '#F4A623' }}>{p.paymentStatus}</span>
+                        <div className="font-syne font-bold">₦{Number(p.amount).toLocaleString()}</div>
+                        <Badge status={p.paymentStatus} />
                       </div>
                     </div>
                   ))}
@@ -306,22 +472,32 @@ export default function DashboardPage() {
 
       {/* ── Mobile bottom nav ── */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex"
-        style={{ background: 'rgba(13,27,62,0.98)', borderTop: '1px solid rgba(255,255,255,0.07)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        style={{ background: 'rgba(13,27,62,.98)', borderTop: '1px solid rgba(255,255,255,.07)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {NAV_ITEMS.map(m => (
           <button key={m.id} onClick={() => setActive(m.id)}
-            className={`flex-1 flex flex-col items-center py-3 gap-1 text-xs font-medium transition-all ${active === m.id ? 'text-accent' : 'text-muted'}`}>
+            className={`flex-1 flex flex-col items-center py-3 gap-0.5 text-xs font-medium transition-all ${active === m.id ? 'text-accent' : 'text-muted'}`}>
             <span className="text-lg">{m.icon}</span>
             <span className="text-[10px]">{m.label}</span>
           </button>
         ))}
-        <Link href="/chat" className="flex-1 flex flex-col items-center py-3 gap-1 text-xs font-medium text-muted">
+        <Link href="/chat" className="flex-1 flex flex-col items-center py-3 gap-0.5 text-xs font-medium text-muted">
           <span className="text-lg">🤖</span>
           <span className="text-[10px]">AI Chat</span>
         </Link>
       </nav>
-
-      {/* bottom nav spacer on mobile */}
       <div className="md:hidden h-16" />
     </div>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#080D1A' }}>
+        <div className="text-muted text-sm">Loading…</div>
+      </div>
+    }>
+      <DashboardInner />
+    </Suspense>
   )
 }

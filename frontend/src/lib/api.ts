@@ -33,7 +33,10 @@ api.interceptors.response.use(
         original.headers.Authorization = `Bearer ${data.data.accessToken}`
         return api(original)
       } catch {
-        localStorage.clear()
+        // Security: only remove auth keys, not all localStorage data
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
+        localStorage.removeItem('user')
         if (typeof window !== 'undefined') window.location.href = '/auth'
       }
     }

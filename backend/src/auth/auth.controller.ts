@@ -1,5 +1,5 @@
 import {
-  Controller, Post, Body, UseGuards, Req,
+  Controller, Post, Body, UseGuards,
   HttpCode, HttpStatus, Get,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -35,12 +35,9 @@ export class AuthController {
   @Post('refresh-token')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh access token' })
-  refreshToken(@Body() dto: RefreshTokenDto, @Req() req: any) {
-    // Decode refresh token to get userId
-    const payload = JSON.parse(
-      Buffer.from(dto.refreshToken.split('.')[1], 'base64').toString(),
-    );
-    return this.authService.refreshToken(payload.sub, dto.refreshToken);
+  refreshToken(@Body() dto: RefreshTokenDto) {
+    // Security: verify the token signature first, then extract sub claim
+    return this.authService.refreshTokenSafe(dto.refreshToken);
   }
 
   @Post('logout')
@@ -65,5 +62,24 @@ export class AuthController {
   @ApiOperation({ summary: 'Reset password with token' })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
+  }
+
+  @Post('verify-email')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth('JWT')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify email with OTP' })
+  verifyEmail(@CurrentUser('id') userId: string, @Body() body: { otp: string }) {
+    return this.authService.verifyEmail(userId, body.otp);
+  }
+
+  @Post('resend-otp')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth('JWT')
+  @Throttle({ default: { limit: 3, ttl: 60 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Resend email verification OTP' })
+  resendOtp(@CurrentUser('id') userId: string) {
+    return this.authService.resendEmailOtp(userId);
   }
 }

@@ -31,6 +31,22 @@ export class User {
   @Column({ name: 'password_reset_token', nullable: true }) @Exclude() passwordResetToken: string;
   @Column({ name: 'password_reset_expires', nullable: true, type: 'timestamptz' }) @Exclude() passwordResetExpires: Date;
   @Column({ name: 'last_login', nullable: true, type: 'timestamptz' }) lastLogin: Date;
+  @Column({ name: 'email_verification_otp', nullable: true }) emailVerificationOtp: string;
+  @Column({ name: 'email_otp_expires', nullable: true, type: 'timestamptz' }) emailOtpExpires: Date;
+  // Extended profile
+  @Column({ name: 'date_of_birth', nullable: true, type: 'date' }) dateOfBirth: Date;
+  @Column({ nullable: true }) address: string;
+  @Column({ nullable: true }) city: string;
+  @Column({ nullable: true }) state: string;
+  @Column({ nullable: true, default: 'Nigerian' }) nationality: string;
+  // KYC
+  @Column({ name: 'kyc_status', default: 'not_started' }) kycStatus: string;
+  @Column({ name: 'kyc_id_type', nullable: true }) kycIdType: string;
+  @Column({ name: 'kyc_id_number', nullable: true }) kycIdNumber: string;
+  @Column({ name: 'kyc_document_url', nullable: true }) kycDocumentUrl: string;
+  @Column({ name: 'kyc_selfie_url', nullable: true }) kycSelfieUrl: string;
+  @Column({ name: 'kyc_submitted_at', nullable: true, type: 'timestamptz' }) kycSubmittedAt: Date;
+  @Column({ name: 'kyc_verified_at', nullable: true, type: 'timestamptz' }) kycVerifiedAt: Date;
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' }) createdAt: Date;
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' }) updatedAt: Date;
 }

@@ -23,7 +23,7 @@ export class PoliciesController {
   }
 
   @Get(':id') @ApiOperation({ summary: 'Get policy by ID' })
-  findOne(@Param('id') id: string) {
-    return this.policiesService.findById(id);
+  findOne(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.policiesService.findByIdForUser(id, userId);
   }
 }

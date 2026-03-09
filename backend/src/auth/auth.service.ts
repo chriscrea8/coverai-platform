@@ -34,25 +34,31 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(dto.password, this.SALT_ROUNDS);
+    // Generate 6-digit email OTP
+    const emailOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
     const user = this.userRepo.create({
       name: dto.name,
       email: dto.email,
       phone: dto.phone,
       passwordHash,
       role: dto.role,
+      emailVerificationOtp: emailOtp,
+      emailOtpExpires: otpExpires,
     });
 
     await this.userRepo.save(user);
     this.logger.log(`New user registered: ${user.email} [${user.role}]`);
 
-    // Send welcome email
+    // Send OTP email (non-blocking)
     await this.notificationsService.sendEmail(user, {
-      subject: 'Welcome to CoverAI! 🎉',
-      message: `Hello ${user.name}, your account has been created. Start exploring insurance today!`,
+      subject: 'Verify your CoverAI email — OTP inside',
+      message: `Hello ${user.name},\n\nYour email verification code is: ${emailOtp}\n\nThis code expires in 15 minutes. Do not share it with anyone.\n\n— CoverAI Team`,
     }).catch(() => {});
 
     const tokens = await this.generateTokens(user);
-    return { user: this.sanitizeUser(user), ...tokens };
+    return { user: this.sanitizeUser(user), ...tokens, emailVerified: false };
   }
 
   // ── LOGIN ──────────────────────────────────────────────────
@@ -73,6 +79,23 @@ export class AuthService {
 
     const tokens = await this.generateTokens(user);
     return { user: this.sanitizeUser(user), ...tokens };
+  }
+
+  // ── REFRESH TOKEN (safe — verifies signature) ──────────────
+  async refreshTokenSafe(refreshToken: string) {
+    let payload: any;
+    try {
+      payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: this.configService.get('jwt.refreshSecret'),
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+    const user = await this.userRepo.findOne({ where: { id: payload.sub } });
+    if (!user || !user.refreshTokenHash) throw new UnauthorizedException('Access denied');
+    const isValid = await bcrypt.compare(refreshToken, user.refreshTokenHash);
+    if (!isValid) throw new UnauthorizedException('Invalid refresh token');
+    return this.generateTokens(user);
   }
 
   // ── REFRESH TOKEN ──────────────────────────────────────────
@@ -138,6 +161,47 @@ export class AuthService {
     return { message: 'Password reset successfully. Please login.' };
   }
 
+  // ── VERIFY EMAIL OTP ───────────────────────────────────────
+  async verifyEmail(userId: string, otp: string) {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    if (user.emailVerified) return { message: 'Email already verified' };
+    if (!user.emailVerificationOtp || user.emailVerificationOtp !== otp) {
+      throw new BadRequestException('Invalid verification code');
+    }
+    if (user.emailOtpExpires && user.emailOtpExpires < new Date()) {
+      throw new BadRequestException('Verification code has expired. Request a new one.');
+    }
+    await this.userRepo.update(userId, {
+      emailVerified: true,
+      emailVerificationOtp: null,
+      emailOtpExpires: null,
+    });
+    await this.notificationsService.sendEmail(user, {
+      subject: '✅ Email Verified — Welcome to CoverAI!',
+      message: `Hello ${user.name}, your email has been verified. You can now access all CoverAI features including purchasing insurance and filing claims.`,
+    }).catch(() => {});
+    return { message: 'Email verified successfully' };
+  }
+
+  async resendEmailOtp(userId: string) {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    if (user.emailVerified) return { message: 'Email already verified' };
+    // Rate limit: only allow resend if last OTP was sent > 1 minute ago
+    if (user.emailOtpExpires && user.emailOtpExpires > new Date(Date.now() + 14 * 60 * 1000)) {
+      throw new BadRequestException('Please wait before requesting another code');
+    }
+    const emailOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 15 * 60 * 1000);
+    await this.userRepo.update(userId, { emailVerificationOtp: emailOtp, emailOtpExpires: otpExpires });
+    await this.notificationsService.sendEmail(user, {
+      subject: 'New verification code — CoverAI',
+      message: `Hello ${user.name},\n\nYour new email verification code is: ${emailOtp}\n\nThis code expires in 15 minutes.`,
+    }).catch(() => {});
+    return { message: 'New verification code sent to your email' };
+  }
+
   // ── HELPERS ────────────────────────────────────────────────
   private async generateTokens(user: User) {
     const payload = { sub: user.id, email: user.email, role: user.role };
@@ -160,7 +224,7 @@ export class AuthService {
   }
 
   private sanitizeUser(user: User) {
-    const { passwordHash, refreshTokenHash, passwordResetToken, ...safe } = user as any;
+    const { passwordHash, refreshTokenHash, passwordResetToken, emailVerificationOtp, emailOtpExpires, ...safe } = user as any;
     return safe;
   }
 }

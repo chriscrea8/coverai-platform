@@ -50,8 +50,25 @@ export class UsersService {
     return this.userRepo.findOne({ where: { id } });
   }
 
+  async submitKyc(userId: string, dto: any) {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    if (user.kycStatus === 'verified') throw new BadRequestException('KYC already verified');
+    // Security: never store raw ID number — store only last 4 digits for display
+    const maskedId = dto.idNumber.slice(0, -4).replace(/./g, '*') + dto.idNumber.slice(-4);
+    await this.userRepo.update(userId, {
+      kycIdType: dto.idType,
+      kycIdNumber: maskedId, // masked for storage — real verification done via API
+      kycDocumentUrl: dto.idDocumentUrl || null,
+      kycSelfieUrl: dto.selfieUrl || null,
+      kycStatus: 'pending',
+      kycSubmittedAt: new Date(),
+    });
+    return { message: 'KYC submitted for review', status: 'pending' };
+  }
+
   private sanitize(user: User) {
-    const { passwordHash, refreshTokenHash, passwordResetToken, ...safe } = user as any;
+    const { passwordHash, refreshTokenHash, passwordResetToken, emailVerificationOtp, emailOtpExpires, ...safe } = user as any;
     return safe;
   }
 }
