@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { api } from '@/lib/api'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'
 
@@ -157,13 +158,7 @@ export default function CoveragePage() {
     setToast('')
 
     try {
-      const token = localStorage.getItem('access_token')
-      const headers: Record<string, string> = {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      }
-
-      // Step 1: Create the policy
+      // Use api instance (axios) so the JWT auto-refresh interceptor fires on 401
       const policyBody: Record<string, any> = {
         premiumAmount: plan.price || plan.premiumMin || plan.minPremium,
         policyDetails: {
@@ -173,45 +168,33 @@ export default function CoveragePage() {
           matchScore: plan.match,
         },
       }
-
-      // Only set IDs if they're real UUIDs from the database (not null/placeholder)
+      // Only include IDs if they are real UUIDs (not null/placeholder)
       if (plan.id && plan.id !== 'null') policyBody.productId = plan.id
       if (plan.providerId) policyBody.providerId = plan.providerId
       if (plan.coverageAmount) policyBody.coverageAmount = plan.coverageAmount
 
-      const policyRes = await fetch(`${API}/policies/purchase`, {
-        method: 'POST', headers, body: JSON.stringify(policyBody),
-      })
-      const policyData = await policyRes.json()
-      if (!policyRes.ok) throw new Error(policyData?.message || 'Could not create policy')
-      const policyId = policyData.data?.id || policyData.id
+      // Step 1: Create the policy
+      const policyRes = await api.post('/policies/purchase', policyBody)
+      const policyId = policyRes.data?.data?.id || policyRes.data?.id
 
-      // Step 2: Initiate payment with callback URL
+      // Step 2: Initiate payment
       const frontendUrl = window.location.origin
-      const callbackUrl = `${frontendUrl}/payment/success?reference=REFERENCE_PLACEHOLDER&policyId=${policyId}`
-
-      const payRes = await fetch(`${API}/payments/create`, {
-        method: 'POST', headers,
-        body: JSON.stringify({
-          policyId,
-          amount: plan.price || plan.premiumMin || plan.minPremium,
-          callbackUrl: `${frontendUrl}/payment/success`,
-        }),
+      const payRes = await api.post('/payments/create', {
+        policyId,
+        amount: plan.price || plan.premiumMin || plan.minPremium,
+        callbackUrl: `${frontendUrl}/payment/success`,
       })
-      const payData = await payRes.json()
-      if (!payRes.ok) throw new Error(payData?.message || 'Could not initiate payment')
 
-      const authUrl = payData.data?.authorizationUrl || payData.authorizationUrl
+      const authUrl = payRes.data?.data?.authorizationUrl || payRes.data?.authorizationUrl
       if (authUrl) {
-        // Paystack redirects back with ?reference= in the URL
         window.location.href = authUrl
       } else {
-        // No payment gateway — policy created, go to dashboard
         setToast('Policy created! Complete payment from your dashboard.')
         setTimeout(() => router.push('/dashboard?highlight=new-policy'), 2500)
       }
     } catch (e: any) {
-      setToast(e.message || 'Something went wrong. Please try again.')
+      const msg = e.response?.data?.message || e.message || 'Something went wrong. Please try again.'
+      setToast(Array.isArray(msg) ? msg.join(', ') : msg)
       setPurchasing(null)
     }
   }

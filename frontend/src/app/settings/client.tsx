@@ -1,5 +1,7 @@
 'use client'
 
+import { api } from '@/lib/api'
+
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -8,14 +10,13 @@ import { Suspense } from 'react'
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'
 
 async function apiFetch(token: string, method: string, path: string, body?: any) {
-  const res = await fetch(`${API}${path}`, {
-    method,
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+  // Uses axios api instance so JWT auto-refresh fires on 401
+  const res = await api.request({
+    method: method as any,
+    url: path,
+    data: body,
   })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data?.message || `Request failed (${res.status})`)
-  return data
+  return res.data
 }
 
 type Tab = 'profile' | 'security' | 'kyc' | 'notifications' | 'privacy'
