@@ -294,3 +294,62 @@ CREATE TRIGGER update_payments_updated_at BEFORE UPDATE ON payments FOR EACH ROW
 CREATE TRIGGER update_commissions_updated_at BEFORE UPDATE ON commissions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_claims_updated_at BEFORE UPDATE ON claims FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_partners_updated_at BEFORE UPDATE ON partners FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ── MIGRATION v002 ADDITIONS ─────────────────────────────────
+-- Applied: email OTP, KYC, extended profile, processing fees,
+-- leads, recommendation context. See migration_v002.sql for ALTERs.
+
+-- ── PROCESSING FEES ──────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS processing_fees (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id         UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    policy_id       UUID REFERENCES policies(id) ON DELETE SET NULL,
+    payment_id      UUID REFERENCES payments(id) ON DELETE SET NULL,
+    fee_type        VARCHAR(50)  NOT NULL DEFAULT 'ai_recommendation',
+    amount          DECIMAL(10,2) NOT NULL,
+    currency        CHAR(3)      NOT NULL DEFAULT 'NGN',
+    status          VARCHAR(20)  NOT NULL DEFAULT 'pending',
+    description     TEXT,
+    collected_at    TIMESTAMPTZ,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ── LEADS ────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS leads (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id         UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    product_id      UUID REFERENCES insurance_products(id) ON DELETE SET NULL,
+    provider_id     UUID REFERENCES insurance_providers(id) ON DELETE SET NULL,
+    lead_type       VARCHAR(50)  NOT NULL DEFAULT 'complex_policy',
+    estimated_value DECIMAL(15,2),
+    status          VARCHAR(20)  NOT NULL DEFAULT 'new',
+    ai_score        INTEGER,
+    ai_reason       TEXT,
+    referral_fee    DECIMAL(10,2),
+    referral_paid   BOOLEAN      NOT NULL DEFAULT FALSE,
+    notes           TEXT,
+    contacted_at    TIMESTAMPTZ,
+    converted_at    TIMESTAMPTZ,
+    expires_at      TIMESTAMPTZ  DEFAULT NOW() + INTERVAL '30 days',
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ── USER RECOMMENDATION CONTEXT ──────────────────────────────
+
+CREATE TABLE IF NOT EXISTS user_recommendation_context (
+    id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id          UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    industry         VARCHAR(100),
+    has_vehicle      BOOLEAN  DEFAULT FALSE,
+    has_property     BOOLEAN  DEFAULT FALSE,
+    employee_count   INTEGER,
+    annual_revenue   DECIMAL(15,2),
+    asset_value      DECIMAL(15,2),
+    preferred_cover  TEXT[],
+    raw_context      JSONB    DEFAULT '{}',
+    updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
