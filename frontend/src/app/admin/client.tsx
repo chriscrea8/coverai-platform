@@ -1,54 +1,94 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import axios from 'axios'
-import { useAuthStore, hydrateAuth } from '@/lib/store'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'
 
-function api(token: string) {
-  return axios.create({ baseURL: API, headers: { Authorization: `Bearer ${token}` } })
+async function req(token: string, method: string, path: string, body?: any) {
+  const res = await fetch(`${API}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data?.message || `Request failed (${res.status})`)
+  return data
 }
 
-// ─── Types ───────────────────────────────────────────────────────────
-type Tab = 'overview' | 'claims' | 'providers' | 'products' | 'users' | 'policies'
+// ─── Types ─────────────────────────────────────────────────────────────────
+type Tab = 'overview' | 'claims' | 'providers' | 'products' | 'users' | 'policies' | 'analytics'
 
 const TABS: { id: Tab; icon: string; label: string }[] = [
-  { id: 'overview',  icon: '📊', label: 'Overview'   },
-  { id: 'claims',    icon: '🛡️', label: 'Claims'     },
-  { id: 'providers', icon: '🏦', label: 'Providers'  },
-  { id: 'products',  icon: '📦', label: 'Products'   },
-  { id: 'users',     icon: '👥', label: 'Users'      },
-  { id: 'policies',  icon: '📋', label: 'Policies'   },
+  { id: 'overview',  icon: '📊', label: 'Overview'  },
+  { id: 'claims',    icon: '🛡️', label: 'Claims'    },
+  { id: 'providers', icon: '🏦', label: 'Providers' },
+  { id: 'products',  icon: '📦', label: 'Products'  },
+  { id: 'users',     icon: '👥', label: 'Users'     },
+  { id: 'policies',  icon: '📋', label: 'Policies'  },
+  { id: 'analytics', icon: '📈', label: 'Analytics' },
 ]
 
-const STATUS_COLOR: Record<string, string> = {
-  active: '#2EC97E', approved: '#2EC97E', successful: '#2EC97E', verified: '#2EC97E',
-  pending: '#F4A623', submitted: '#F4A623', under_review: '#7C6BFF',
-  rejected: '#E84545', expired: '#E84545', inactive: '#E84545', suspended: '#E84545',
+// ─── Shared UI ─────────────────────────────────────────────────────────────
+const STATUS_STYLES: Record<string, [string, string]> = {
+  active:       ['rgba(46,201,126,.15)',  '#2EC97E'],
+  approved:     ['rgba(46,201,126,.15)',  '#2EC97E'],
+  paid:         ['rgba(46,201,126,.15)',  '#2EC97E'],
+  successful:   ['rgba(46,201,126,.15)',  '#2EC97E'],
+  pending:      ['rgba(244,166,35,.15)',  '#F4A623'],
+  submitted:    ['rgba(244,166,35,.15)',  '#F4A623'],
+  under_review: ['rgba(124,107,255,.15)', '#7C6BFF'],
+  processing:   ['rgba(124,107,255,.15)', '#7C6BFF'],
+  rejected:     ['rgba(232,69,69,.15)',   '#E84545'],
+  expired:      ['rgba(232,69,69,.15)',   '#E84545'],
+  cancelled:    ['rgba(232,69,69,.15)',   '#E84545'],
+  inactive:     ['rgba(232,69,69,.15)',   '#E84545'],
+  suspended:    ['rgba(232,69,69,.15)',   '#E84545'],
+  lapsed:       ['rgba(232,69,69,.15)',   '#E84545'],
 }
 
 function Badge({ status }: { status: string }) {
-  const c = STATUS_COLOR[status] || '#8492B4'
+  const [bg, color] = STATUS_STYLES[status?.toLowerCase()] || ['rgba(132,146,180,.15)', '#8492B4']
   return (
     <span className="px-2 py-0.5 rounded-full text-xs font-bold capitalize"
-      style={{ background: c + '20', color: c, border: `1px solid ${c}40` }}>
-      {status?.replace('_', ' ')}
+      style={{ background: bg, color, border: `1px solid ${color}40` }}>
+      {status?.replace(/_/g, ' ')}
     </span>
   )
 }
 
-function Modal({ title, onClose, children }: any) {
+function Spin() {
+  return <span className="inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin opacity-70" />
+}
+
+function Card({ children, className = '', onClick }: any) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
-      <div className="w-full max-w-lg rounded-2xl p-6 max-h-[90vh] overflow-y-auto"
-        style={{ background: '#0D1B3E', border: '1px solid rgba(255,255,255,0.12)' }}
+    <div className={`rounded-2xl p-4 md:p-5 ${className} ${onClick ? 'cursor-pointer transition-all hover:brightness-110' : ''}`}
+      style={{ background: 'rgba(13,27,62,.8)', border: '1px solid rgba(255,255,255,.07)' }}
+      onClick={onClick}>
+      {children}
+    </div>
+  )
+}
+
+function Modal({ title, onClose, wide = false, children }: any) {
+  useEffect(() => {
+    const fn = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', fn)
+    return () => window.removeEventListener('keydown', fn)
+  }, [onClose])
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6"
+      style={{ background: 'rgba(0,0,0,.8)', backdropFilter: 'blur(6px)' }}
+      onClick={onClose}>
+      <div className={`w-full ${wide ? 'max-w-2xl' : 'max-w-md'} rounded-2xl p-5 md:p-6 max-h-[90vh] overflow-y-auto`}
+        style={{ background: '#0D1B3E', border: '1px solid rgba(255,255,255,.15)' }}
         onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-5">
-          <h3 className="font-syne font-bold text-lg">{title}</h3>
-          <button onClick={onClose} className="text-muted hover:text-white text-xl">✕</button>
+          <h3 className="font-syne font-bold text-base md:text-lg pr-4">{title}</h3>
+          <button onClick={onClose}
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-muted hover:text-white hover:bg-white/10 shrink-0 transition-all">✕</button>
         </div>
         {children}
       </div>
@@ -56,124 +96,193 @@ function Modal({ title, onClose, children }: any) {
   )
 }
 
-function InputField({ label, value, onChange, type = 'text', placeholder = '', required = false, textarea = false }: any) {
-  const cls = "w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none transition-all"
-  const style = { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }
+function Field({ label, value, onChange, type = 'text', placeholder = '', required = false, textarea = false, rows = 3, hint = '' }: any) {
+  const base = "w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none transition-all"
+  const sty = { background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.12)' }
   return (
     <div>
-      <label className="text-xs font-semibold text-muted uppercase tracking-wider block mb-1.5">{label}{required && ' *'}</label>
+      <label className="text-xs font-semibold text-muted uppercase tracking-wider block mb-1.5">
+        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      </label>
       {textarea
-        ? <textarea className={cls} style={{ ...style, resize: 'vertical' }} rows={3} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
-        : <input className={cls} style={style} type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
+        ? <textarea className={base} style={{ ...sty, resize: 'vertical' }} rows={rows}
+            value={value} onChange={(e: any) => onChange(e.target.value)} placeholder={placeholder} />
+        : <input className={base} style={sty} type={type}
+            value={value} onChange={(e: any) => onChange(e.target.value)} placeholder={placeholder} />
       }
+      {hint && <p className="text-muted text-xs mt-1">{hint}</p>}
     </div>
   )
 }
 
-// ─── Main Admin Page ──────────────────────────────────────────────────
+function Select({ label, value, onChange, options, required = false }: any) {
+  return (
+    <div>
+      <label className="text-xs font-semibold text-muted uppercase tracking-wider block mb-1.5">
+        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      </label>
+      <select className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none"
+        style={{ background: 'rgba(13,27,62,.95)', border: '1px solid rgba(255,255,255,.12)' }}
+        value={value} onChange={(e: any) => onChange(e.target.value)}>
+        {options.map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </div>
+  )
+}
+
+function Filters({ options, value, onChange }: any) {
+  return (
+    <div className="flex gap-2 flex-wrap">
+      {options.map((o: string) => (
+        <button key={o} onClick={() => onChange(o)}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${value === o ? 'bg-accent text-ink' : 'text-muted hover:text-white'}`}
+          style={value !== o ? { background: 'rgba(255,255,255,.06)' } : {}}>
+          {o.replace(/_/g, ' ')}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function Empty({ icon, title, sub }: any) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center opacity-60">
+      <div className="text-5xl mb-4">{icon}</div>
+      <div className="font-semibold text-sm mb-1">{title}</div>
+      <div className="text-muted text-xs">{sub}</div>
+    </div>
+  )
+}
+
+function ActionBtn({ label, color, onClick, disabled = false }: any) {
+  const schemes: Record<string, [string, string, string]> = {
+    green:  ['rgba(46,201,126,.15)',  '#2EC97E', 'rgba(46,201,126,.3)'],
+    red:    ['rgba(232,69,69,.15)',   '#E84545', 'rgba(232,69,69,.3)'],
+    purple: ['rgba(124,107,255,.15)', '#7C6BFF', 'rgba(124,107,255,.3)'],
+    ghost:  ['rgba(255,255,255,.07)', '#8492B4', 'transparent'],
+    yellow: ['rgba(244,166,35,.15)',  '#F4A623', 'rgba(244,166,35,.3)'],
+  }
+  const [bg, text, border] = schemes[color] || schemes.ghost
+  return (
+    <button onClick={onClick} disabled={disabled}
+      className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-40 flex items-center gap-1.5 whitespace-nowrap"
+      style={{ background: bg, color: text, border: `1px solid ${border}` }}>
+      {disabled && <Spin />}{label}
+    </button>
+  )
+}
+
+// ─── Main Page ─────────────────────────────────────────────────────────────
 export default function AdminPage() {
   const router = useRouter()
-  const { user, accessToken, isLoggedIn } = useAuthStore()
   const [tab, setTab] = useState<Tab>('overview')
   const [menuOpen, setMenuOpen] = useState(false)
-  const [data, setData] = useState<any>({})
-  const [loading, setLoading] = useState(false)
-  const [toast, setToast] = useState('')
+  const [token, setToken] = useState('')
+  const [userName, setUserName] = useState('')
+  const [store, setStore] = useState<Record<string, any>>({})
+  const [loading, setLoading] = useState<Record<string, boolean>>({})
+  const [toastQ, setToastQ] = useState<{ id: number; msg: string; ok: boolean }[]>([])
+  const toastId = useRef(0)
 
   useEffect(() => {
-    hydrateAuth()
-    if (!isLoggedIn()) { router.push('/auth'); return }
+    const t = localStorage.getItem('access_token') || ''
+    if (!t) { router.push('/auth'); return }
+    setToken(t)
+    try {
+      const u = JSON.parse(localStorage.getItem('user') || '{}')
+      setUserName(u.name || u.email || 'Admin')
+    } catch {}
   }, [])
 
-  const token = accessToken || (typeof window !== 'undefined' ? localStorage.getItem('access_token') : '') || ''
+  const toast = useCallback((msg: string, ok = true) => {
+    const id = ++toastId.current
+    setToastQ(q => [...q, { id, msg, ok }])
+    setTimeout(() => setToastQ(q => q.filter(t => t.id !== id)), 3500)
+  }, [])
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3500) }
-
-  const load = async (key: string, endpoint: string) => {
-    if (data[key]) return
-    setLoading(true)
+  const load = useCallback(async (key: string, path: string, force = false) => {
+    if (store[key] && !force) return
+    setLoading(l => ({ ...l, [key]: true }))
     try {
-      const res = await api(token).get(endpoint)
-      setData((d: any) => ({ ...d, [key]: res.data.data || res.data || [] }))
-    } catch (e: any) {
-      showToast(e.response?.data?.message || `Failed to load ${key}`)
-    }
-    setLoading(false)
-  }
+      const data = await req(token, 'GET', path)
+      setStore(s => ({ ...s, [key]: data.data ?? data ?? [] }))
+    } catch (e: any) { toast(e.message, false) }
+    setLoading(l => ({ ...l, [key]: false }))
+  }, [token, store, toast])
 
-  const refresh = async (key: string, endpoint: string) => {
-    setLoading(true)
-    try {
-      const res = await api(token).get(endpoint)
-      setData((d: any) => ({ ...d, [key]: res.data.data || res.data || [] }))
-    } catch {}
-    setLoading(false)
-  }
+  const reload = useCallback((key: string, path: string) => load(key, path, true), [load])
 
   useEffect(() => {
-    if (tab === 'overview') { load('stats', '/admin/stats').catch(() => {}) }
-    if (tab === 'claims')   { load('claims', '/admin/claims') }
+    if (!token) return
+    if (tab === 'overview')  { load('stats', '/admin/stats') }
+    if (tab === 'claims')    { load('claims', '/admin/claims') }
     if (tab === 'providers') { load('providers', '/admin/providers') }
-    if (tab === 'products') { load('products', '/admin/products') }
-    if (tab === 'users')    { load('users', '/admin/users') }
-    if (tab === 'policies') { load('policies', '/admin/policies') }
-  }, [tab])
+    if (tab === 'products')  { load('products', '/admin/products'); load('providers', '/admin/providers') }
+    if (tab === 'users')     { load('users', '/admin/users') }
+    if (tab === 'policies')  { load('policies', '/admin/policies') }
+    if (tab === 'analytics') { load('analytics', '/admin/analytics/revenue'); load('stats', '/admin/stats') }
+  }, [tab, token])
 
-  const navigate = (t: Tab) => { setTab(t); setMenuOpen(false) }
+  const shared = { store, token, loading, toast, reload }
+  const openClaims = store.stats?.openClaims || 0
 
   return (
-    <div className="min-h-screen bg-ink flex flex-col" style={{ background: '#080D1A' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: '#080D1A' }}>
 
-      {/* ── Top bar ── */}
+      {/* Top bar */}
       <header className="flex items-center justify-between px-4 md:px-6 py-3 sticky top-0 z-40"
-        style={{ background: 'rgba(8,13,26,0.97)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        style={{ background: 'rgba(8,13,26,.97)', borderBottom: '1px solid rgba(255,255,255,.07)' }}>
         <div className="flex items-center gap-3">
           <Link href="/" className="font-syne font-black text-lg">Cover<span className="text-accent">AI</span></Link>
-          <span className="px-2 py-0.5 rounded text-xs font-bold" style={{ background: 'rgba(232,69,69,0.2)', color: '#E84545', border: '1px solid rgba(232,69,69,0.3)' }}>
-            ADMIN
-          </span>
+          <span className="px-2 py-0.5 rounded text-xs font-black tracking-wider"
+            style={{ background: 'rgba(232,69,69,.2)', color: '#E84545', border: '1px solid rgba(232,69,69,.35)' }}>ADMIN</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-muted text-xs hidden md:block">{user?.name || user?.email}</span>
-          <Link href="/dashboard" className="text-muted text-xs hover:text-white transition-colors hidden md:block">← User Dashboard</Link>
-          <button onClick={() => setMenuOpen(o => !o)} className="md:hidden w-8 h-8 flex flex-col items-center justify-center gap-1 rounded"
-            style={{ background: 'rgba(255,255,255,0.06)' }}>
-            <span className="w-4 h-0.5 bg-white rounded" />
-            <span className="w-4 h-0.5 bg-white rounded" />
-            <span className="w-4 h-0.5 bg-white rounded" />
+          <span className="text-muted text-xs hidden md:block">{userName}</span>
+          <Link href="/dashboard" className="hidden md:block text-xs text-muted hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/5 transition-all">← Dashboard</Link>
+          <button className="md:hidden w-9 h-9 flex flex-col items-center justify-center gap-1.5 rounded-lg"
+            style={{ background: 'rgba(255,255,255,.06)' }} onClick={() => setMenuOpen(o => !o)}>
+            {[0,1,2].map(i => <span key={i} className="w-4 h-0.5 bg-white rounded" />)}
           </button>
         </div>
       </header>
 
-      {toast && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl text-sm font-semibold shadow-xl"
-          style={{ background: '#1A3A8F', border: '1px solid rgba(255,255,255,0.15)' }}>
-          {toast}
-        </div>
-      )}
+      {/* Toast stack */}
+      <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 items-center pointer-events-none">
+        {toastQ.map(t => (
+          <div key={t.id} className="px-4 py-2.5 rounded-xl text-sm font-semibold shadow-xl whitespace-nowrap"
+            style={{ background: t.ok ? 'rgba(46,201,126,.2)' : 'rgba(232,69,69,.2)', border: `1px solid ${t.ok ? 'rgba(46,201,126,.4)' : 'rgba(232,69,69,.4)'}`, color: t.ok ? '#2EC97E' : '#E84545', backdropFilter: 'blur(8px)' }}>
+            {t.ok ? '✓' : '✕'} {t.msg}
+          </div>
+        ))}
+      </div>
 
-      <div className="flex flex-1">
-        {/* ── Desktop sidebar ── */}
-        <aside className="hidden md:flex w-56 shrink-0 flex-col py-5 px-3 sticky top-12 h-[calc(100vh-48px)]"
-          style={{ background: 'rgba(13,27,62,0.6)', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="flex flex-1 min-h-0">
+
+        {/* Desktop sidebar */}
+        <aside className="hidden md:flex w-56 shrink-0 flex-col py-5 px-3 sticky top-12 h-[calc(100vh-48px)] overflow-y-auto"
+          style={{ background: 'rgba(13,27,62,.45)', borderRight: '1px solid rgba(255,255,255,.06)' }}>
           <p className="text-muted text-xs uppercase tracking-widest font-semibold px-3 mb-3">Management</p>
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium w-full text-left mb-0.5 transition-all ${tab === t.id ? 'text-white' : 'text-muted hover:text-white hover:bg-white/5'}`}
-              style={tab === t.id ? { background: 'rgba(26,58,143,0.45)' } : {}}>
+              className={`relative flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium w-full text-left mb-0.5 transition-all ${tab === t.id ? 'text-white' : 'text-muted hover:text-white hover:bg-white/5'}`}
+              style={tab === t.id ? { background: 'rgba(26,58,143,.5)' } : {}}>
               <span>{t.icon}</span>{t.label}
+              {t.id === 'claims' && openClaims > 0 && (
+                <span className="ml-auto text-xs font-black px-1.5 py-0 rounded-full" style={{ background: '#E84545', color: '#fff' }}>{openClaims}</span>
+              )}
             </button>
           ))}
         </aside>
 
-        {/* ── Mobile slide menu ── */}
+        {/* Mobile slide menu */}
         {menuOpen && (
-          <div className="md:hidden fixed inset-0 z-30 top-12" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={() => setMenuOpen(false)}>
-            <div className="px-3 py-3" style={{ background: 'rgba(13,27,62,0.99)' }} onClick={e => e.stopPropagation()}>
+          <div className="md:hidden fixed inset-0 z-30 top-12" style={{ background: 'rgba(0,0,0,.7)' }} onClick={() => setMenuOpen(false)}>
+            <div className="px-3 py-3" style={{ background: '#0A1228' }} onClick={e => e.stopPropagation()}>
               {TABS.map(t => (
-                <button key={t.id} onClick={() => navigate(t.id)}
+                <button key={t.id} onClick={() => { setTab(t.id); setMenuOpen(false) }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium mb-1 ${tab === t.id ? 'text-white' : 'text-muted'}`}
-                  style={tab === t.id ? { background: 'rgba(26,58,143,0.4)' } : {}}>
+                  style={tab === t.id ? { background: 'rgba(26,58,143,.4)' } : {}}>
                   <span>{t.icon}</span>{t.label}
                 </button>
               ))}
@@ -181,179 +290,280 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ── Content ── */}
+        {/* Content area */}
         <main className="flex-1 p-4 md:p-6 overflow-auto min-w-0">
-          {loading && <div className="text-muted text-xs mb-3 animate-pulse">Loading...</div>}
-
-          {tab === 'overview'  && <OverviewTab  data={data} />}
-          {tab === 'claims'    && <ClaimsTab    data={data} token={token} refresh={() => refresh('claims', '/admin/claims')} showToast={showToast} />}
-          {tab === 'providers' && <ProvidersTab data={data} token={token} refresh={() => refresh('providers', '/admin/providers')} showToast={showToast} />}
-          {tab === 'products'  && <ProductsTab  data={data} token={token} refresh={() => refresh('products', '/admin/products')} showToast={showToast} />}
-          {tab === 'users'     && <UsersTab     data={data} token={token} refresh={() => refresh('users', '/admin/users')} showToast={showToast} />}
-          {tab === 'policies'  && <PoliciesTab  data={data} token={token} refresh={() => refresh('policies', '/admin/policies')} showToast={showToast} />}
+          {tab === 'overview'  && <OverviewTab  {...shared} setTab={setTab} />}
+          {tab === 'claims'    && <ClaimsTab    {...shared} />}
+          {tab === 'providers' && <ProvidersTab {...shared} />}
+          {tab === 'products'  && <ProductsTab  {...shared} />}
+          {tab === 'users'     && <UsersTab     {...shared} />}
+          {tab === 'policies'  && <PoliciesTab  {...shared} />}
+          {tab === 'analytics' && <AnalyticsTab {...shared} />}
         </main>
       </div>
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex overflow-x-auto"
-        style={{ background: 'rgba(8,13,26,0.98)', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex"
+        style={{ background: 'rgba(8,13,26,.98)', borderTop: '1px solid rgba(255,255,255,.07)' }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className={`flex-1 min-w-[60px] flex flex-col items-center py-2.5 gap-0.5 transition-all ${tab === t.id ? 'text-accent' : 'text-muted'}`}>
-            <span className="text-base">{t.icon}</span>
+            className={`relative flex-1 flex flex-col items-center py-2.5 gap-0.5 transition-all ${tab === t.id ? 'text-accent' : 'text-muted'}`}>
+            <span className="text-lg">{t.icon}</span>
             <span className="text-[9px] font-medium">{t.label}</span>
+            {t.id === 'claims' && openClaims > 0 && (
+              <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full text-[8px] font-black flex items-center justify-center"
+                style={{ background: '#E84545', color: '#fff' }}>{openClaims}</span>
+            )}
           </button>
         ))}
       </nav>
-      <div className="md:hidden h-14" />
+      <div className="md:hidden h-16" />
     </div>
   )
 }
 
-// ─── Overview ─────────────────────────────────────────────────────────
-function OverviewTab({ data }: any) {
-  const stats = data.stats || {}
-  const cards = [
-    { label: 'Total Users',    value: stats.totalUsers    ?? '—', icon: '👥', color: '#00C2A8' },
-    { label: 'Active Policies',value: stats.activePolicies ?? '—', icon: '📋', color: '#F4A623' },
-    { label: 'Open Claims',    value: stats.openClaims    ?? '—', icon: '🛡️', color: '#7C6BFF' },
-    { label: 'Total Revenue',  value: stats.totalRevenue  ? `₦${Number(stats.totalRevenue).toLocaleString()}` : '—', icon: '💰', color: '#2EC97E' },
-    { label: 'Providers',      value: stats.totalProviders ?? '—', icon: '🏦', color: '#F4A623' },
-    { label: 'Products',       value: stats.totalProducts  ?? '—', icon: '📦', color: '#00C2A8' },
+// ─── OVERVIEW ──────────────────────────────────────────────────────────────
+function OverviewTab({ store, loading, setTab }: any) {
+  const s = store.stats || {}
+  const busy = loading.stats
+
+  const kpis = [
+    { label: 'Total Users',     value: s.totalUsers,     sub: 'registered accounts', icon: '👥', color: '#00C2A8', tab: 'users'     },
+    { label: 'Active Policies', value: s.activePolicies, sub: `of ${s.totalPolicies ?? '?'} total`, icon: '📋', color: '#F4A623', tab: 'policies'  },
+    { label: 'Open Claims',     value: s.openClaims,     sub: 'awaiting review',     icon: '⚠️', color: '#E84545', tab: 'claims'    },
+    { label: 'Total Revenue',   value: s.totalRevenue != null ? `₦${Number(s.totalRevenue).toLocaleString()}` : null, sub: 'from payments', icon: '💰', color: '#2EC97E', tab: 'analytics' },
+    { label: 'Providers',       value: s.totalProviders, sub: 'insurance partners', icon: '🏦', color: '#7C6BFF', tab: 'providers' },
+    { label: 'Products',        value: s.totalProducts,  sub: 'coverage types',     icon: '📦', color: '#00C2A8', tab: 'products'  },
   ]
+
   return (
     <div>
-      <h1 className="font-syne font-black text-xl md:text-2xl mb-5">Platform Overview</h1>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-8">
-        {cards.map(c => (
-          <div key={c.label} className="p-4 md:p-5 rounded-2xl" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <div className="text-xl mb-2">{c.icon}</div>
-            <div className="font-syne font-black text-xl md:text-2xl" style={{ color: c.color }}>{c.value}</div>
-            <div className="text-muted text-xs mt-1 uppercase tracking-wider">{c.label}</div>
-          </div>
+      <h1 className="font-syne font-black text-2xl mb-1">Platform Overview</h1>
+      <p className="text-muted text-sm mb-6">Real-time metrics across your insurance platform</p>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+        {kpis.map(k => (
+          <Card key={k.label} onClick={() => setTab(k.tab)} className="hover:-translate-y-0.5">
+            <div className="flex justify-between mb-3">
+              <span className="text-2xl">{k.icon}</span>
+              <span className="text-muted text-xs opacity-50">→</span>
+            </div>
+            {busy
+              ? <div className="h-7 w-20 rounded-lg animate-pulse mb-1" style={{ background: 'rgba(255,255,255,.08)' }} />
+              : <div className="font-syne font-black text-2xl mb-0.5" style={{ color: k.color }}>{k.value ?? '—'}</div>
+            }
+            <div className="text-muted text-xs uppercase tracking-wider">{k.label}</div>
+            <div className="text-muted text-xs mt-0.5 opacity-60">{k.sub}</div>
+          </Card>
         ))}
       </div>
-      <div className="p-5 rounded-2xl" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}>
-        <h3 className="font-syne font-bold mb-4">🚀 Quick Actions</h3>
+
+      <Card className="mb-4">
+        <p className="text-muted text-xs uppercase tracking-widest font-semibold mb-4">Quick Actions</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'Review Claims',    icon: '🛡️', tab: 'claims' },
-            { label: 'Add Provider',     icon: '🏦', tab: 'providers' },
-            { label: 'Add Product',      icon: '📦', tab: 'products' },
-            { label: 'Manage Users',     icon: '👥', tab: 'users' },
+            { label: 'Review Claims',  icon: '🛡️', tab: 'claims',    note: `${s.openClaims || 0} open`, accent: '#E84545' },
+            { label: 'Add Provider',   icon: '🏦', tab: 'providers', note: 'Onboard insurer', accent: '#F4A623' },
+            { label: 'Add Product',    icon: '📦', tab: 'products',  note: 'New coverage',   accent: '#00C2A8' },
+            { label: 'Manage Users',   icon: '👥', tab: 'users',     note: `${s.totalUsers || 0} total`, accent: '#7C6BFF' },
           ].map(a => (
-            <button key={a.label} className="p-3 rounded-xl text-sm font-medium text-left transition-all hover:-translate-y-0.5"
-              style={{ background: 'rgba(26,58,143,0.3)', border: '1px solid rgba(26,58,143,0.4)' }}>
-              <div className="text-xl mb-1">{a.icon}</div>
-              <div>{a.label}</div>
+            <button key={a.label} onClick={() => setTab(a.tab)}
+              className="p-4 rounded-xl text-left hover:-translate-y-0.5 transition-all"
+              style={{ background: 'rgba(26,58,143,.25)', border: '1px solid rgba(26,58,143,.4)' }}>
+              <div className="text-2xl mb-2">{a.icon}</div>
+              <div className="font-semibold text-sm">{a.label}</div>
+              <div className="text-xs mt-0.5" style={{ color: a.accent }}>{a.note}</div>
             </button>
           ))}
         </div>
+      </Card>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card>
+          <p className="text-muted text-xs uppercase tracking-widest font-semibold mb-4">Policies</p>
+          {[
+            ['Active',  s.activePolicies, '#2EC97E'],
+            ['Pending', (s.totalPolicies ?? 0) - (s.activePolicies ?? 0), '#F4A623'],
+            ['Total',   s.totalPolicies,  '#00C2A8'],
+          ].map(([l, v, c]: any) => (
+            <div key={l} className="flex justify-between py-2 border-b last:border-0" style={{ borderColor: 'rgba(255,255,255,.05)' }}>
+              <span className="text-muted text-sm">{l}</span>
+              <span className="font-syne font-bold text-sm" style={{ color: c }}>{busy ? '—' : (v ?? '—')}</span>
+            </div>
+          ))}
+        </Card>
+        <Card>
+          <p className="text-muted text-xs uppercase tracking-widest font-semibold mb-4">Claims</p>
+          {[
+            ['Submitted',   s.openClaims,  '#F4A623'],
+            ['Total',       s.totalClaims, '#7C6BFF'],
+          ].map(([l, v, c]: any) => (
+            <div key={l} className="flex justify-between py-2 border-b last:border-0" style={{ borderColor: 'rgba(255,255,255,.05)' }}>
+              <span className="text-muted text-sm">{l}</span>
+              <span className="font-syne font-bold text-sm" style={{ color: c }}>{busy ? '—' : (v ?? '—')}</span>
+            </div>
+          ))}
+        </Card>
       </div>
     </div>
   )
 }
 
-// ─── Claims Management ────────────────────────────────────────────────
-function ClaimsTab({ data, token, refresh, showToast }: any) {
-  const claims: any[] = data.claims || []
-  const [selected, setSelected] = useState<any>(null)
+// ─── CLAIMS ────────────────────────────────────────────────────────────────
+function ClaimsTab({ store, token, loading, toast, reload }: any) {
+  const claims: any[] = store.claims || []
   const [filter, setFilter] = useState('all')
+  const [search, setSearch] = useState('')
+  const [selected, setSelected] = useState<any>(null)
   const [note, setNote] = useState('')
-  const [acting, setActing] = useState(false)
+  const [busy, setBusy] = useState('')
 
-  const filtered = filter === 'all' ? claims : claims.filter(c => c.status === filter)
+  const visible = claims
+    .filter(c => filter === 'all' || c.status === filter)
+    .filter(c => {
+      if (!search) return true
+      const q = search.toLowerCase()
+      return c.claimNumber?.toLowerCase().includes(q) ||
+             c.user?.name?.toLowerCase().includes(q) ||
+             c.user?.email?.toLowerCase().includes(q)
+    })
 
-  const act = async (id: string, action: 'approve' | 'reject') => {
-    setActing(true)
+  const counts = ['submitted', 'under_review', 'approved', 'rejected', 'paid']
+    .map(s => [s, claims.filter(c => c.status === s).length])
+
+  async function act(id: string, action: string) {
+    setBusy(action)
     try {
-      await api(token).patch(`/admin/claims/${id}/${action}`, { note })
-      showToast(`Claim ${action}d successfully`)
-      setSelected(null)
-      setNote('')
-      refresh()
-    } catch (e: any) {
-      showToast(e.response?.data?.message || `Failed to ${action} claim`)
-    }
-    setActing(false)
+      await req(token, 'PATCH', `/admin/claims/${id}/${action}`, { note })
+      toast(`Claim ${action === 'review' ? 'moved to under review' : action + 'd'}`)
+      setSelected(null); setNote('')
+      reload('claims', '/admin/claims')
+    } catch (e: any) { toast(e.message, false) }
+    setBusy('')
   }
 
   return (
     <div>
-      <div className="flex flex-wrap justify-between items-center gap-3 mb-5">
-        <h1 className="font-syne font-black text-xl">Claims Management</h1>
-        <div className="flex gap-2 flex-wrap">
-          {['all','submitted','under_review','approved','rejected'].map(f => (
-            <button key={f} onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize ${filter === f ? 'bg-accent text-ink' : 'text-muted hover:text-white'}`}
-              style={filter !== f ? { background: 'rgba(255,255,255,0.06)' } : {}}>
-              {f.replace('_',' ')}
-            </button>
-          ))}
+      <div className="flex flex-wrap justify-between items-start gap-3 mb-5">
+        <div>
+          <h1 className="font-syne font-black text-2xl">Claims Management</h1>
+          <p className="text-muted text-sm mt-0.5">Review, approve or reject customer claims</p>
         </div>
+        <button onClick={() => reload('claims', '/admin/claims')}
+          className="px-3 py-2 rounded-lg text-xs font-semibold text-muted hover:text-white transition-all flex items-center gap-1.5"
+          style={{ background: 'rgba(255,255,255,.06)' }}>
+          {loading.claims ? <Spin /> : '↻'} Refresh
+        </button>
       </div>
 
-      <div className="space-y-3">
-        {filtered.length === 0 && <p className="text-muted text-sm py-8 text-center">No claims found</p>}
-        {filtered.map((c: any) => (
-          <div key={c.id} className="p-4 md:p-5 rounded-2xl" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <div className="flex flex-wrap justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <span className="font-syne font-bold">{c.claimNumber}</span>
-                  <Badge status={c.status} />
-                </div>
-                <div className="text-muted text-sm">{c.description?.substring(0, 100)}{c.description?.length > 100 ? '...' : ''}</div>
-                <div className="flex gap-4 mt-2 text-xs text-muted flex-wrap">
-                  <span>Amount: <span className="text-white font-semibold">₦{Number(c.claimAmount).toLocaleString()}</span></span>
-                  <span>By: <span className="text-white">{c.user?.name || c.user?.email || '—'}</span></span>
-                  <span>Date: {c.incidentDate ? new Date(c.incidentDate).toLocaleDateString() : '—'}</span>
-                </div>
-              </div>
-              <div className="flex gap-2 items-start flex-wrap">
-                <button onClick={() => setSelected(c)} className="px-3 py-1.5 rounded-lg text-xs font-semibold text-muted hover:text-white transition-all"
-                  style={{ background: 'rgba(255,255,255,0.06)' }}>View Details</button>
-                {(c.status === 'submitted' || c.status === 'under_review') && (
-                  <>
-                    <button onClick={() => { setSelected(c); }} className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                      style={{ background: 'rgba(46,201,126,0.15)', color: '#2EC97E', border: '1px solid rgba(46,201,126,0.3)' }}>
-                      Approve
-                    </button>
-                    <button onClick={() => { setSelected(c); }} className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                      style={{ background: 'rgba(232,69,69,0.15)', color: '#E84545', border: '1px solid rgba(232,69,69,0.3)' }}>
-                      Reject
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          className="flex-1 px-3 py-2 rounded-xl text-sm text-white outline-none"
+          style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)' }}
+          placeholder="Search claim number, customer name or email…" />
+        <Filters options={['all', 'submitted', 'under_review', 'approved', 'rejected', 'paid']} value={filter} onChange={setFilter} />
+      </div>
+
+      <div className="flex gap-2 flex-wrap mb-5 text-xs">
+        {counts.map(([s, n]) => (
+          <span key={s as string} className="px-2 py-1 rounded-lg capitalize"
+            style={{ background: 'rgba(255,255,255,.05)', color: '#8492B4' }}>
+            {(s as string).replace('_', ' ')}: <strong className="text-white">{n as number}</strong>
+          </span>
         ))}
       </div>
 
-      {selected && (
-        <Modal title={`Claim: ${selected.claimNumber}`} onClose={() => { setSelected(null); setNote('') }}>
-          <div className="space-y-3 text-sm mb-5">
-            <div className="flex justify-between"><span className="text-muted">Status</span><Badge status={selected.status} /></div>
-            <div className="flex justify-between"><span className="text-muted">Amount</span><span className="font-bold text-accent">₦{Number(selected.claimAmount).toLocaleString()}</span></div>
-            <div className="flex justify-between"><span className="text-muted">Claimant</span><span>{selected.user?.name || '—'}</span></div>
-            <div className="flex justify-between"><span className="text-muted">Incident Date</span><span>{selected.incidentDate ? new Date(selected.incidentDate).toLocaleDateString() : '—'}</span></div>
-            <div className="flex justify-between"><span className="text-muted">Location</span><span>{selected.incidentLocation || '—'}</span></div>
-            <div><span className="text-muted">Description</span><p className="mt-1 p-3 rounded-lg text-xs" style={{ background: 'rgba(255,255,255,0.05)' }}>{selected.description}</p></div>
+      {loading.claims && !claims.length ? <div className="flex justify-center py-20"><Spin /></div>
+        : !visible.length ? <Empty icon="🛡️" title="No claims found" sub="Try different filters" />
+        : (
+          <div className="space-y-3">
+            {visible.map((c: any) => (
+              <Card key={c.id}>
+                <div className="flex flex-wrap justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                      <span className="font-syne font-bold">{c.claimNumber}</span>
+                      <Badge status={c.status} />
+                    </div>
+                    <p className="text-muted text-sm mb-2 line-clamp-1">{c.description}</p>
+                    <div className="flex gap-4 flex-wrap text-xs text-muted">
+                      <span>💰 <span className="text-white font-semibold">₦{Number(c.claimAmount || 0).toLocaleString()}</span></span>
+                      <span>👤 <span className="text-white">{c.user?.name || c.user?.email || '—'}</span></span>
+                      <span>📅 {c.incidentDate ? new Date(c.incidentDate).toLocaleDateString('en-NG') : '—'}</span>
+                      {c.incidentLocation && <span>📍 {c.incidentLocation}</span>}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 items-start flex-wrap shrink-0">
+                    <ActionBtn label="Details" color="ghost" onClick={() => { setSelected(c); setNote(c.reviewerNotes || '') }} />
+                    {c.status === 'submitted' &&
+                      <ActionBtn label="Start Review" color="purple" onClick={() => act(c.id, 'review')} disabled={busy === 'review'} />}
+                    {(c.status === 'submitted' || c.status === 'under_review') && (<>
+                      <ActionBtn label="✓ Approve" color="green" onClick={() => { setSelected(c); setNote('') }} />
+                      <ActionBtn label="✕ Reject"  color="red"   onClick={() => { setSelected(c); setNote('') }} />
+                    </>)}
+                  </div>
+                </div>
+              </Card>
+            ))}
           </div>
+        )}
+
+      {selected && (
+        <Modal title={`Claim — ${selected.claimNumber}`} wide onClose={() => { setSelected(null); setNote('') }}>
+          <div className="grid grid-cols-2 gap-2.5 mb-5">
+            {[
+              ['Status',        <Badge status={selected.status} />],
+              ['Amount',        <span key="a" className="font-bold text-accent">₦{Number(selected.claimAmount || 0).toLocaleString()}</span>],
+              ['Approved Amt',  selected.approvedAmount ? `₦${Number(selected.approvedAmount).toLocaleString()}` : '—'],
+              ['Customer',      selected.user?.name || '—'],
+              ['Email',         selected.user?.email || '—'],
+              ['Incident Date', selected.incidentDate ? new Date(selected.incidentDate).toLocaleDateString('en-NG', { dateStyle: 'long' }) : '—'],
+              ['Location',      selected.incidentLocation || '—'],
+              ['Policy ID',     selected.policyId ? selected.policyId.slice(0, 8) + '…' : '—'],
+              ['Submitted',     selected.submittedAt ? new Date(selected.submittedAt).toLocaleString('en-NG') : '—'],
+              ['Reviewed',      selected.reviewedAt  ? new Date(selected.reviewedAt).toLocaleString('en-NG') : 'Not yet'],
+            ].map(([l, v]: any) => (
+              <div key={l} className="p-3 rounded-xl" style={{ background: 'rgba(255,255,255,.04)' }}>
+                <div className="text-muted text-xs mb-1">{l}</div>
+                <div className="text-sm font-medium">{v}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="p-3 rounded-xl mb-4" style={{ background: 'rgba(255,255,255,.04)' }}>
+            <div className="text-muted text-xs mb-1.5">Description</div>
+            <p className="text-sm leading-relaxed">{selected.description}</p>
+          </div>
+
+          {selected.evidenceFiles?.length > 0 && (
+            <div className="mb-4">
+              <div className="text-muted text-xs mb-2">Evidence Files ({selected.evidenceFiles.length})</div>
+              <div className="flex gap-2 flex-wrap">
+                {selected.evidenceFiles.map((f: string, i: number) => (
+                  <a key={i} href={f} target="_blank" rel="noopener noreferrer"
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                    style={{ background: 'rgba(59,130,246,.1)', color: '#60a5fa', border: '1px solid rgba(59,130,246,.2)' }}>
+                    📎 File {i + 1}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           {(selected.status === 'submitted' || selected.status === 'under_review') && (
             <>
-              <InputField label="Admin Note (optional)" value={note} onChange={setNote} textarea placeholder="Add a note about this decision..." />
+              <Field label="Decision Note (visible to customer)" value={note} onChange={setNote} textarea
+                placeholder="Provide context for your decision…" rows={3} />
               <div className="flex gap-3 mt-4">
-                <button onClick={() => act(selected.id, 'approve')} disabled={acting}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+                <button onClick={() => act(selected.id, 'approve')} disabled={!!busy}
+                  className="flex-1 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition-all"
                   style={{ background: '#2EC97E', color: '#0A0F1E' }}>
-                  ✓ Approve Claim
+                  {busy === 'approve' && <Spin />} ✓ Approve Claim
                 </button>
-                <button onClick={() => act(selected.id, 'reject')} disabled={acting}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
-                  style={{ background: 'rgba(232,69,69,0.2)', color: '#E84545', border: '1px solid rgba(232,69,69,0.4)' }}>
-                  ✕ Reject Claim
+                <button onClick={() => act(selected.id, 'reject')} disabled={!!busy}
+                  className="flex-1 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition-all"
+                  style={{ background: 'rgba(232,69,69,.2)', color: '#E84545', border: '1px solid rgba(232,69,69,.4)' }}>
+                  {busy === 'reject' && <Spin />} ✕ Reject Claim
                 </button>
               </div>
             </>
@@ -364,98 +574,119 @@ function ClaimsTab({ data, token, refresh, showToast }: any) {
   )
 }
 
-// ─── Insurance Providers ──────────────────────────────────────────────
-function ProvidersTab({ data, token, refresh, showToast }: any) {
-  const providers: any[] = data.providers || []
-  const [showAdd, setShowAdd] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', phone: '', address: '', licenseNumber: '', description: '' })
+// ─── PROVIDERS ─────────────────────────────────────────────────────────────
+function ProvidersTab({ store, token, loading, toast, reload }: any) {
+  const providers: any[] = store.providers || []
+  const blank = { name: '', email: '', phone: '', address: '', licenseNumber: '', description: '' }
+  const [form, setForm] = useState(blank)
+  const [editing, setEditing] = useState<any>(null) // null=closed, false=new, obj=edit
   const [saving, setSaving] = useState(false)
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState('all')
   const f = (k: string) => (v: string) => setForm(p => ({ ...p, [k]: v }))
 
-  const save = async () => {
-    if (!form.name || !form.email) { showToast('Name and email are required'); return }
+  const visible = providers
+    .filter(p => filter === 'all' || p.status === filter)
+    .filter(p => !search || p.name?.toLowerCase().includes(search.toLowerCase()) || (p.email || p.contactEmail)?.toLowerCase().includes(search.toLowerCase()))
+
+  function openNew() { setForm(blank); setEditing(false) }
+  function openEdit(p: any) {
+    setForm({ name: p.name, email: p.email || p.contactEmail || '', phone: p.phone || p.contactPhone || '', address: p.address || '', licenseNumber: p.licenseNumber || p.naicomLicense || '', description: p.description || '' })
+    setEditing(p)
+  }
+
+  async function save() {
+    if (!form.name.trim() || !form.email.trim()) { toast('Name and email are required', false); return }
     setSaving(true)
     try {
-      await api(token).post('/admin/providers', form)
-      showToast(`Provider "${form.name}" onboarded successfully!`)
-      setShowAdd(false)
-      setForm({ name: '', email: '', phone: '', address: '', licenseNumber: '', description: '' })
-      refresh()
-    } catch (e: any) {
-      showToast(e.response?.data?.message || 'Failed to add provider')
-    }
+      if (editing) {
+        await req(token, 'PATCH', `/admin/providers/${editing.id}`, form)
+        toast(`${form.name} updated`)
+      } else {
+        await req(token, 'POST', '/admin/providers', form)
+        toast(`${form.name} onboarded successfully`)
+      }
+      setEditing(null)
+      reload('providers', '/admin/providers')
+    } catch (e: any) { toast(e.message, false) }
     setSaving(false)
   }
 
-  const toggle = async (id: string, current: string) => {
-    const action = current === 'active' ? 'deactivate' : 'activate'
+  async function toggle(p: any) {
+    const action = p.status === 'active' ? 'deactivate' : 'activate'
     try {
-      await api(token).patch(`/admin/providers/${id}/${action}`)
-      showToast(`Provider ${action}d`)
-      refresh()
-    } catch (e: any) {
-      showToast(e.response?.data?.message || 'Failed to update provider')
-    }
+      await req(token, 'PATCH', `/admin/providers/${p.id}/${action}`)
+      toast(`Provider ${action}d`)
+      reload('providers', '/admin/providers')
+    } catch (e: any) { toast(e.message, false) }
   }
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-5">
+      <div className="flex justify-between items-start mb-5">
         <div>
-          <h1 className="font-syne font-black text-xl">Insurance Providers</h1>
-          <p className="text-muted text-xs mt-0.5">Onboard and manage insurance companies on the platform</p>
+          <h1 className="font-syne font-black text-2xl">Insurance Providers</h1>
+          <p className="text-muted text-sm mt-0.5">Onboard and manage insurance companies</p>
         </div>
-        <button onClick={() => setShowAdd(true)} className="px-4 py-2 rounded-xl bg-accent text-ink text-sm font-bold hover:bg-yellow-400 transition-all">
-          + Add Provider
-        </button>
+        <button onClick={openNew} className="px-4 py-2 rounded-xl bg-accent text-ink text-sm font-bold hover:brightness-110 transition-all">+ Add Provider</button>
       </div>
 
-      <div className="space-y-3">
-        {providers.length === 0 && <div className="text-center py-12 text-muted text-sm">No providers yet. Add your first insurance company.</div>}
-        {providers.map((p: any) => (
-          <div key={p.id} className="p-4 md:p-5 rounded-2xl" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <div className="flex flex-wrap justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="font-syne font-bold">{p.name}</span>
-                  <Badge status={p.status || 'active'} />
-                </div>
-                <div className="text-muted text-xs space-y-0.5">
-                  <div>📧 {p.email} {p.phone && `· 📞 ${p.phone}`}</div>
-                  {p.licenseNumber && <div>🪪 License: {p.licenseNumber}</div>}
-                  {p.description && <div className="text-xs mt-1">{p.description}</div>}
-                </div>
-              </div>
-              <div className="flex gap-2 items-start">
-                <button onClick={() => toggle(p.id, p.status)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                  style={p.status === 'active'
-                    ? { background: 'rgba(232,69,69,0.15)', color: '#E84545', border: '1px solid rgba(232,69,69,0.3)' }
-                    : { background: 'rgba(46,201,126,0.15)', color: '#2EC97E', border: '1px solid rgba(46,201,126,0.3)' }}>
-                  {p.status === 'active' ? 'Deactivate' : 'Activate'}
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
+      <div className="flex flex-col sm:flex-row gap-3 mb-5">
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          className="flex-1 px-3 py-2 rounded-xl text-sm text-white outline-none"
+          style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)' }}
+          placeholder="Search providers…" />
+        <Filters options={['all', 'active', 'inactive']} value={filter} onChange={setFilter} />
       </div>
 
-      {showAdd && (
-        <Modal title="Onboard Insurance Provider" onClose={() => setShowAdd(false)}>
+      {loading.providers && !providers.length ? <div className="flex justify-center py-20"><Spin /></div>
+        : !visible.length ? <Empty icon="🏦" title="No providers yet" sub="Add your first insurance company" />
+        : (
           <div className="space-y-3">
-            <InputField label="Company Name" value={form.name} onChange={f('name')} required placeholder="e.g. Leadway Assurance" />
-            <InputField label="Contact Email" value={form.email} onChange={f('email')} required type="email" placeholder="partner@insurer.com" />
-            <InputField label="Phone Number" value={form.phone} onChange={f('phone')} placeholder="+234..." />
-            <InputField label="NAICOM License Number" value={form.licenseNumber} onChange={f('licenseNumber')} placeholder="NAICOM/..." />
-            <InputField label="Address" value={form.address} onChange={f('address')} placeholder="Company address" />
-            <InputField label="Description" value={form.description} onChange={f('description')} textarea placeholder="Brief description of the insurance company..." />
+            {visible.map((p: any) => (
+              <Card key={p.id}>
+                <div className="flex flex-wrap justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap mb-2">
+                      <span className="font-syne font-bold">{p.name}</span>
+                      <Badge status={p.status || 'active'} />
+                    </div>
+                    <div className="text-xs text-muted space-y-1">
+                      <div>📧 {p.email || p.contactEmail || '—'}</div>
+                      {(p.phone || p.contactPhone) && <div>📞 {p.phone || p.contactPhone}</div>}
+                      {(p.licenseNumber || p.naicomLicense) && <div>🪪 {p.licenseNumber || p.naicomLicense}</div>}
+                      {p.address && <div>📍 {p.address}</div>}
+                      {p.description && <div className="mt-1 opacity-70 line-clamp-2">{p.description}</div>}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 items-start shrink-0">
+                    <ActionBtn label="Edit" color="ghost" onClick={() => openEdit(p)} />
+                    <ActionBtn
+                      label={p.status === 'active' ? 'Deactivate' : 'Activate'}
+                      color={p.status === 'active' ? 'red' : 'green'}
+                      onClick={() => toggle(p)} />
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+
+      {editing !== null && (
+        <Modal title={editing ? `Edit — ${editing.name}` : 'Onboard Insurance Provider'} onClose={() => setEditing(null)}>
+          <div className="space-y-3">
+            <Field label="Company Name" value={form.name} onChange={f('name')} required placeholder="e.g. Leadway Assurance" />
+            <Field label="Contact Email" value={form.email} onChange={f('email')} required type="email" placeholder="partner@insurer.com" />
+            <Field label="Phone" value={form.phone} onChange={f('phone')} placeholder="+234 800 000 0000" />
+            <Field label="NAICOM License" value={form.licenseNumber} onChange={f('licenseNumber')} placeholder="NAICOM/INS/2024/001" />
+            <Field label="Head Office Address" value={form.address} onChange={f('address')} placeholder="123 Marina Street, Lagos" />
+            <Field label="Description" value={form.description} onChange={f('description')} textarea placeholder="Brief overview of this company's specialisation…" />
           </div>
           <div className="flex gap-3 mt-5">
-            <button onClick={() => setShowAdd(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-muted hover:text-white transition-all"
-              style={{ background: 'rgba(255,255,255,0.05)' }}>Cancel</button>
-            <button onClick={save} disabled={saving} className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+            <button onClick={() => setEditing(null)} className="flex-1 py-2.5 rounded-xl text-sm text-muted font-semibold" style={{ background: 'rgba(255,255,255,.05)' }}>Cancel</button>
+            <button onClick={save} disabled={saving} className="flex-1 py-2.5 rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2 transition-all"
               style={{ background: '#F4A623', color: '#0A0F1E' }}>
-              {saving ? 'Onboarding...' : 'Onboard Provider'}
+              {saving && <Spin />}{editing ? 'Save Changes' : 'Onboard Provider'}
             </button>
           </div>
         </Modal>
@@ -464,125 +695,146 @@ function ProvidersTab({ data, token, refresh, showToast }: any) {
   )
 }
 
-// ─── Insurance Products ───────────────────────────────────────────────
-function ProductsTab({ data, token, refresh, showToast }: any) {
-  const products: any[] = data.products || []
-  const providers: any[] = data.providers || []
-  const [showAdd, setShowAdd] = useState(false)
-  const [form, setForm] = useState({ name: '', description: '', productType: 'business', minPremium: '', maxPremium: '', providerId: '', coverageDetails: '' })
+// ─── PRODUCTS ──────────────────────────────────────────────────────────────
+const PRODUCT_TYPES = ['business', 'motor', 'life', 'health', 'property', 'liability', 'marine', 'travel', 'cyber', 'agriculture']
+
+function ProductsTab({ store, token, loading, toast, reload }: any) {
+  const products: any[] = store.products || []
+  const providers: any[] = store.providers || []
+  const blank = { name: '', description: '', productType: 'business', minPremium: '', maxPremium: '', providerId: '', coverageDetails: '', commissionRate: '10', durationMonths: '12' }
+  const [form, setForm] = useState(blank)
+  const [editing, setEditing] = useState<any>(null)
   const [saving, setSaving] = useState(false)
+  const [filter, setFilter] = useState('all')
+  const [search, setSearch] = useState('')
   const f = (k: string) => (v: string) => setForm(p => ({ ...p, [k]: v }))
 
-  const save = async () => {
-    if (!form.name || !form.providerId) { showToast('Name and provider are required'); return }
+  const visible = products
+    .filter(p => filter === 'all' || (p.productType || p.category) === filter || p.status === filter)
+    .filter(p => !search || (p.name || p.productName || '').toLowerCase().includes(search.toLowerCase()))
+
+  function openNew() { setForm(blank); setEditing(false) }
+  function openEdit(p: any) {
+    setForm({
+      name: p.name || p.productName || '',
+      description: p.description || '',
+      productType: p.productType || p.category || 'business',
+      minPremium: String(p.minPremium || p.premiumMin || ''),
+      maxPremium: String(p.maxPremium || p.premiumMax || ''),
+      providerId: p.providerId || '',
+      coverageDetails: typeof p.coverageDetails === 'object' ? JSON.stringify(p.coverageDetails, null, 2) : (p.coverageDetails || ''),
+      commissionRate: String(p.commissionRate != null ? (Number(p.commissionRate) * 100).toFixed(0) : '10'),
+      durationMonths: String(p.durationMonths || '12'),
+    })
+    setEditing(p)
+  }
+
+  async function save() {
+    if (!form.name.trim() || !form.providerId) { toast('Name and provider are required', false); return }
     setSaving(true)
     try {
-      await api(token).post('/admin/products', {
+      const body = {
         ...form,
-        minPremium: Number(form.minPremium),
-        maxPremium: Number(form.maxPremium),
-      })
-      showToast(`Product "${form.name}" added successfully!`)
-      setShowAdd(false)
-      setForm({ name: '', description: '', productType: 'business', minPremium: '', maxPremium: '', providerId: '', coverageDetails: '' })
-      refresh()
-    } catch (e: any) {
-      showToast(e.response?.data?.message || 'Failed to add product')
-    }
+        minPremium: form.minPremium ? Number(form.minPremium) : undefined,
+        maxPremium: form.maxPremium ? Number(form.maxPremium) : undefined,
+        commissionRate: Number(form.commissionRate) / 100,
+        durationMonths: Number(form.durationMonths),
+      }
+      if (editing) {
+        await req(token, 'PATCH', `/admin/products/${editing.id}`, body)
+        toast('Product updated')
+      } else {
+        await req(token, 'POST', '/admin/products', body)
+        toast(`"${form.name}" created`)
+      }
+      setEditing(null)
+      reload('products', '/admin/products')
+    } catch (e: any) { toast(e.message, false) }
     setSaving(false)
   }
 
-  const toggleProduct = async (id: string, current: string) => {
-    const action = current === 'active' ? 'deactivate' : 'activate'
+  async function toggle(p: any) {
+    const action = p.status === 'active' ? 'deactivate' : 'activate'
     try {
-      await api(token).patch(`/admin/products/${id}/${action}`)
-      showToast(`Product ${action}d`)
-      refresh()
-    } catch (e: any) {
-      showToast(e.response?.data?.message || 'Failed to update product')
-    }
+      await req(token, 'PATCH', `/admin/products/${p.id}/${action}`)
+      toast(`Product ${action}d`)
+      reload('products', '/admin/products')
+    } catch (e: any) { toast(e.message, false) }
   }
-
-  const TYPES = ['business', 'motor', 'life', 'health', 'property', 'liability', 'marine', 'travel']
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-5">
+      <div className="flex justify-between items-start mb-5">
         <div>
-          <h1 className="font-syne font-black text-xl">Insurance Products</h1>
-          <p className="text-muted text-xs mt-0.5">Manage policies available for sale to customers</p>
+          <h1 className="font-syne font-black text-2xl">Insurance Products</h1>
+          <p className="text-muted text-sm mt-0.5">Manage coverage types available for customers to purchase</p>
         </div>
-        <button onClick={() => setShowAdd(true)} className="px-4 py-2 rounded-xl bg-accent text-ink text-sm font-bold hover:bg-yellow-400 transition-all">
-          + Add Product
-        </button>
+        <button onClick={openNew} className="px-4 py-2 rounded-xl bg-accent text-ink text-sm font-bold hover:brightness-110 transition-all">+ Add Product</button>
       </div>
 
-      <div className="space-y-3">
-        {products.length === 0 && <div className="text-center py-12 text-muted text-sm">No products yet. Add insurance products to sell to customers.</div>}
-        {products.map((p: any) => (
-          <div key={p.id} className="p-4 md:p-5 rounded-2xl" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <div className="flex flex-wrap justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <span className="font-syne font-bold">{p.name}</span>
-                  <Badge status={p.status || 'active'} />
-                  <span className="px-2 py-0.5 rounded-full text-xs capitalize" style={{ background: 'rgba(0,194,168,0.1)', color: '#00C2A8' }}>{p.productType}</span>
-                </div>
-                <div className="text-muted text-sm">{p.description}</div>
-                <div className="flex gap-4 mt-1.5 text-xs text-muted flex-wrap">
-                  {p.minPremium && <span>Min: <span className="text-accent font-semibold">₦{Number(p.minPremium).toLocaleString()}</span></span>}
-                  {p.maxPremium && <span>Max: <span className="text-accent font-semibold">₦{Number(p.maxPremium).toLocaleString()}</span></span>}
-                  {p.provider && <span>Provider: <span className="text-white">{p.provider?.name}</span></span>}
-                </div>
-              </div>
-              <div className="flex gap-2 items-start">
-                <button onClick={() => toggleProduct(p.id, p.status)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                  style={p.status === 'active'
-                    ? { background: 'rgba(232,69,69,0.15)', color: '#E84545', border: '1px solid rgba(232,69,69,0.3)' }
-                    : { background: 'rgba(46,201,126,0.15)', color: '#2EC97E', border: '1px solid rgba(46,201,126,0.3)' }}>
-                  {p.status === 'active' ? 'Deactivate' : 'Activate'}
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          className="flex-1 px-3 py-2 rounded-xl text-sm text-white outline-none"
+          style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)' }}
+          placeholder="Search products…" />
+        <Filters options={['all', 'active', 'inactive', 'draft', ...PRODUCT_TYPES]} value={filter} onChange={setFilter} />
       </div>
 
-      {showAdd && (
-        <Modal title="Add Insurance Product" onClose={() => setShowAdd(false)}>
+      {loading.products && !products.length ? <div className="flex justify-center py-20"><Spin /></div>
+        : !visible.length ? <Empty icon="📦" title="No products found" sub="Add insurance products for customers to purchase" />
+        : (
           <div className="space-y-3">
-            <InputField label="Product Name" value={form.name} onChange={f('name')} required placeholder="e.g. SME Business Shield" />
-            <div>
-              <label className="text-xs font-semibold text-muted uppercase tracking-wider block mb-1.5">Insurance Provider *</label>
-              <select className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none"
-                style={{ background: 'rgba(13,27,62,0.9)', border: '1px solid rgba(255,255,255,0.12)' }}
-                value={form.providerId} onChange={e => f('providerId')(e.target.value)}>
-                <option value="">Select a provider</option>
-                {providers.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-muted uppercase tracking-wider block mb-1.5">Product Type</label>
-              <select className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none capitalize"
-                style={{ background: 'rgba(13,27,62,0.9)', border: '1px solid rgba(255,255,255,0.12)' }}
-                value={form.productType} onChange={e => f('productType')(e.target.value)}>
-                {TYPES.map(t => <option key={t} value={t} className="capitalize">{t}</option>)}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <InputField label="Min Premium (₦)" value={form.minPremium} onChange={f('minPremium')} type="number" placeholder="5000" />
-              <InputField label="Max Premium (₦)" value={form.maxPremium} onChange={f('maxPremium')} type="number" placeholder="500000" />
-            </div>
-            <InputField label="Description" value={form.description} onChange={f('description')} textarea placeholder="What does this product cover?" />
-            <InputField label="Coverage Details (JSON or text)" value={form.coverageDetails} onChange={f('coverageDetails')} textarea placeholder='e.g. {"fire": true, "theft": true, "liability": true}' />
+            {visible.map((p: any) => (
+              <Card key={p.id}>
+                <div className="flex flex-wrap justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                      <span className="font-syne font-bold">{p.name || p.productName}</span>
+                      <Badge status={p.status || 'active'} />
+                      <span className="px-2 py-0.5 rounded-full text-xs capitalize"
+                        style={{ background: 'rgba(0,194,168,.1)', color: '#00C2A8', border: '1px solid rgba(0,194,168,.2)' }}>
+                        {p.productType || p.category}
+                      </span>
+                    </div>
+                    <p className="text-muted text-sm mb-2 line-clamp-1">{p.description}</p>
+                    <div className="flex gap-4 flex-wrap text-xs text-muted">
+                      {(p.minPremium ?? p.premiumMin) && <span>Min: <span className="text-accent font-semibold">₦{Number(p.minPremium ?? p.premiumMin).toLocaleString()}</span></span>}
+                      {(p.maxPremium ?? p.premiumMax) && <span>Max: <span className="text-accent font-semibold">₦{Number(p.maxPremium ?? p.premiumMax).toLocaleString()}</span></span>}
+                      {p.commissionRate && <span>Commission: <span className="text-white">{(Number(p.commissionRate) * 100).toFixed(0)}%</span></span>}
+                      {p.durationMonths && <span>Duration: <span className="text-white">{p.durationMonths}mo</span></span>}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 items-start shrink-0">
+                    <ActionBtn label="Edit" color="ghost" onClick={() => openEdit(p)} />
+                    <ActionBtn label={p.status === 'active' ? 'Deactivate' : 'Activate'} color={p.status === 'active' ? 'red' : 'green'} onClick={() => toggle(p)} />
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+
+      {editing !== null && (
+        <Modal title={editing ? 'Edit Product' : 'Add Insurance Product'} wide onClose={() => setEditing(null)}>
+          <div className="grid md:grid-cols-2 gap-3">
+            <div className="md:col-span-2"><Field label="Product Name" value={form.name} onChange={f('name')} required placeholder="e.g. SME Business Shield" /></div>
+            <Select label="Insurance Provider" value={form.providerId} onChange={f('providerId')} required
+              options={[{ value: '', label: 'Select a provider…' }, ...providers.map((p: any) => ({ value: p.id, label: p.name }))]} />
+            <Select label="Product Type" value={form.productType} onChange={f('productType')}
+              options={PRODUCT_TYPES.map(t => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) }))} />
+            <Field label="Min Premium (₦)" value={form.minPremium} onChange={f('minPremium')} type="number" placeholder="5000" />
+            <Field label="Max Premium (₦)" value={form.maxPremium} onChange={f('maxPremium')} type="number" placeholder="500000" />
+            <Field label="Commission Rate (%)" value={form.commissionRate} onChange={f('commissionRate')} type="number" placeholder="10" hint="Platform commission percentage" />
+            <Field label="Duration (months)" value={form.durationMonths} onChange={f('durationMonths')} type="number" placeholder="12" />
+            <div className="md:col-span-2"><Field label="Description" value={form.description} onChange={f('description')} textarea placeholder="Describe what risks and events this product covers…" /></div>
+            <div className="md:col-span-2"><Field label='Coverage Details (JSON)' value={form.coverageDetails} onChange={f('coverageDetails')} textarea rows={4}
+              placeholder={'{"fire": true, "theft": true, "liability": true, "flood": false}'} hint="Optional JSON coverage specification" /></div>
           </div>
           <div className="flex gap-3 mt-5">
-            <button onClick={() => setShowAdd(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-muted"
-              style={{ background: 'rgba(255,255,255,0.05)' }}>Cancel</button>
-            <button onClick={save} disabled={saving} className="flex-1 py-2.5 rounded-xl text-sm font-bold disabled:opacity-50"
+            <button onClick={() => setEditing(null)} className="flex-1 py-2.5 rounded-xl text-sm text-muted font-semibold" style={{ background: 'rgba(255,255,255,.05)' }}>Cancel</button>
+            <button onClick={save} disabled={saving} className="flex-1 py-2.5 rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2 transition-all"
               style={{ background: '#F4A623', color: '#0A0F1E' }}>
-              {saving ? 'Saving...' : 'Add Product'}
+              {saving && <Spin />}{editing ? 'Save Changes' : 'Create Product'}
             </button>
           </div>
         </Modal>
@@ -591,121 +843,493 @@ function ProductsTab({ data, token, refresh, showToast }: any) {
   )
 }
 
-// ─── Users ─────────────────────────────────────────────────────────────
-function UsersTab({ data, token, refresh, showToast }: any) {
-  const users: any[] = data.users || []
+// ─── USERS ─────────────────────────────────────────────────────────────────
+function UsersTab({ store, token, loading, toast, reload }: any) {
+  const users: any[] = store.users || []
   const [filter, setFilter] = useState('all')
-  const filtered = filter === 'all' ? users : users.filter(u => u.role === filter)
+  const [search, setSearch] = useState('')
+  const [viewing, setViewing] = useState<any>(null)
+  const [roleTarget, setRoleTarget] = useState<any>(null)
+  const [busy, setBusy] = useState('')
 
-  const suspend = async (id: string, current: string) => {
-    const action = current === 'suspended' ? 'activate' : 'suspend'
+  const visible = users
+    .filter(u => filter === 'all' || u.role === filter || u.status === filter)
+    .filter(u => {
+      if (!search) return true
+      const q = search.toLowerCase()
+      return u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.phone?.includes(q)
+    })
+
+  const counts = {
+    all: users.length,
+    consumer: users.filter(u => u.role === 'consumer').length,
+    sme_owner: users.filter(u => u.role === 'sme_owner').length,
+    admin: users.filter(u => u.role === 'admin').length,
+    suspended: users.filter(u => u.status === 'suspended').length,
+  }
+
+  async function toggleSuspend(u: any) {
+    const action = u.status === 'suspended' ? 'activate' : 'suspend'
+    setBusy(u.id)
     try {
-      await api(token).patch(`/admin/users/${id}/${action}`)
-      showToast(`User ${action}d`)
-      refresh()
-    } catch (e: any) {
-      showToast(e.response?.data?.message || 'Failed to update user')
-    }
+      await req(token, 'PATCH', `/admin/users/${u.id}/${action}`)
+      toast(`User ${action}d`)
+      reload('users', '/admin/users')
+    } catch (e: any) { toast(e.message, false) }
+    setBusy('')
+  }
+
+  async function changeRole(userId: string, role: string) {
+    try {
+      await req(token, 'PATCH', `/admin/users/${userId}/role`, { role })
+      toast('Role updated successfully')
+      setRoleTarget(null)
+      reload('users', '/admin/users')
+    } catch (e: any) { toast(e.message, false) }
   }
 
   return (
     <div>
-      <div className="flex flex-wrap justify-between items-center gap-3 mb-5">
-        <h1 className="font-syne font-black text-xl">Users ({users.length})</h1>
-        <div className="flex gap-2 flex-wrap">
-          {['all', 'consumer', 'sme_owner', 'admin'].map(f => (
-            <button key={f} onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${filter === f ? 'bg-accent text-ink' : 'text-muted hover:text-white'}`}
-              style={filter !== f ? { background: 'rgba(255,255,255,0.06)' } : {}}>
-              {f.replace('_', ' ')}
-            </button>
-          ))}
+      <div className="flex flex-wrap justify-between items-start gap-3 mb-5">
+        <div>
+          <h1 className="font-syne font-black text-2xl">Users ({users.length})</h1>
+          <p className="text-muted text-sm mt-0.5">Manage user accounts, roles and access</p>
         </div>
+        <button onClick={() => reload('users', '/admin/users')}
+          className="px-3 py-2 rounded-lg text-xs font-semibold text-muted hover:text-white flex items-center gap-1.5 transition-all"
+          style={{ background: 'rgba(255,255,255,.06)' }}>
+          {loading.users ? <Spin /> : '↻'} Refresh
+        </button>
       </div>
-      <div className="space-y-2">
-        {filtered.length === 0 && <p className="text-muted text-sm py-8 text-center">No users found</p>}
-        {filtered.map((u: any) => (
-          <div key={u.id} className="p-4 rounded-2xl flex flex-wrap justify-between gap-3 items-center"
-            style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-semibold text-sm">{u.name}</span>
-                <Badge status={u.status || 'active'} />
-                <span className="text-xs px-2 py-0.5 rounded-full capitalize" style={{ background: 'rgba(124,107,255,0.15)', color: '#7C6BFF' }}>{u.role?.replace('_',' ')}</span>
-              </div>
-              <div className="text-muted text-xs mt-0.5">{u.email} {u.phone && `· ${u.phone}`}</div>
-            </div>
-            <button onClick={() => suspend(u.id, u.status)}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-              style={u.status === 'suspended'
-                ? { background: 'rgba(46,201,126,0.15)', color: '#2EC97E', border: '1px solid rgba(46,201,126,0.3)' }
-                : { background: 'rgba(232,69,69,0.1)', color: '#E84545', border: '1px solid rgba(232,69,69,0.2)' }}>
-              {u.status === 'suspended' ? 'Reactivate' : 'Suspend'}
-            </button>
-          </div>
+
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          className="flex-1 px-3 py-2 rounded-xl text-sm text-white outline-none"
+          style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)' }}
+          placeholder="Search name, email or phone…" />
+        <Filters options={['all', 'consumer', 'sme_owner', 'admin', 'suspended']} value={filter} onChange={setFilter} />
+      </div>
+
+      <div className="flex gap-2 flex-wrap mb-5 text-xs">
+        {Object.entries(counts).map(([k, v]) => (
+          <span key={k} className="px-2 py-1 rounded-lg capitalize" style={{ background: 'rgba(255,255,255,.05)', color: '#8492B4' }}>
+            {k.replace('_', ' ')}: <strong className="text-white">{v}</strong>
+          </span>
         ))}
       </div>
+
+      {loading.users && !users.length ? <div className="flex justify-center py-20"><Spin /></div>
+        : !visible.length ? <Empty icon="👥" title="No users found" sub="Try different filters or search terms" />
+        : (
+          <div className="space-y-2">
+            {visible.map((u: any) => (
+              <Card key={u.id}>
+                <div className="flex flex-wrap justify-between gap-3 items-center">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                      <span className="font-semibold text-sm">{u.name || 'No name'}</span>
+                      <Badge status={u.status || 'active'} />
+                      <span className="px-2 py-0.5 rounded-full text-xs capitalize"
+                        style={{ background: 'rgba(124,107,255,.15)', color: '#7C6BFF', border: '1px solid rgba(124,107,255,.25)' }}>
+                        {u.role?.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <div className="text-muted text-xs">
+                      {u.email}
+                      {u.phone && ` · ${u.phone}`}
+                      {u.lastLogin && ` · Last login: ${new Date(u.lastLogin).toLocaleDateString('en-NG')}`}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 items-center shrink-0">
+                    <ActionBtn label="View" color="ghost" onClick={() => setViewing(u)} />
+                    <ActionBtn label="Role" color="purple" onClick={() => setRoleTarget(u)} />
+                    <ActionBtn
+                      label={u.status === 'suspended' ? 'Reactivate' : 'Suspend'}
+                      color={u.status === 'suspended' ? 'green' : 'red'}
+                      onClick={() => toggleSuspend(u)} disabled={busy === u.id} />
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+
+      {/* User detail modal */}
+      {viewing && (
+        <Modal title={viewing.name || viewing.email} onClose={() => setViewing(null)}>
+          <div className="space-y-2.5 mb-5">
+            {[
+              ['User ID',    viewing.id],
+              ['Name',       viewing.name || '—'],
+              ['Email',      viewing.email],
+              ['Phone',      viewing.phone || '—'],
+              ['Role',       <span key="r" className="capitalize">{viewing.role?.replace('_', ' ')}</span>],
+              ['Status',     <Badge status={viewing.status || 'active'} />],
+              ['Email Verified', viewing.emailVerified ? '✅ Yes' : '❌ No'],
+              ['Joined',     viewing.createdAt ? new Date(viewing.createdAt).toLocaleDateString('en-NG', { dateStyle: 'long' }) : '—'],
+              ['Last Login', viewing.lastLogin ? new Date(viewing.lastLogin).toLocaleString('en-NG') : 'Never'],
+            ].map(([l, v]: any) => (
+              <div key={l} className="flex justify-between items-center px-3 py-2 rounded-xl" style={{ background: 'rgba(255,255,255,.04)' }}>
+                <span className="text-muted text-xs">{l}</span>
+                <span className="text-sm font-medium">{v}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-3">
+            <button onClick={() => { setViewing(null); setRoleTarget(viewing) }}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+              style={{ background: 'rgba(124,107,255,.15)', color: '#7C6BFF', border: '1px solid rgba(124,107,255,.3)' }}>
+              Change Role
+            </button>
+            <button onClick={() => { toggleSuspend(viewing); setViewing(null) }}
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+              style={viewing.status === 'suspended'
+                ? { background: 'rgba(46,201,126,.15)', color: '#2EC97E', border: '1px solid rgba(46,201,126,.3)' }
+                : { background: 'rgba(232,69,69,.15)', color: '#E84545', border: '1px solid rgba(232,69,69,.3)' }}>
+              {viewing.status === 'suspended' ? 'Reactivate' : 'Suspend'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Role change modal */}
+      {roleTarget && (
+        <Modal title={`Change Role — ${roleTarget.name || roleTarget.email}`} onClose={() => setRoleTarget(null)}>
+          <p className="text-muted text-sm mb-5">
+            Current role: <strong className="text-white capitalize">{roleTarget.role?.replace('_', ' ')}</strong>
+          </p>
+          <div className="space-y-2">
+            {[
+              { role: 'consumer',          label: 'Consumer',          desc: 'Standard user — buy policies, file claims',            icon: '👤' },
+              { role: 'sme_owner',         label: 'SME Owner',         desc: 'Business user — SME dashboard access',                 icon: '🏢' },
+              { role: 'insurance_partner', label: 'Insurance Partner', desc: 'Provider access — view their own policies and claims', icon: '🤝' },
+              { role: 'admin',             label: 'Admin',             desc: 'Full platform access — all management features',      icon: '🔐' },
+            ].map(r => (
+              <button key={r.role} onClick={() => changeRole(roleTarget.id, r.role)}
+                className="w-full p-4 rounded-xl text-left transition-all hover:brightness-110"
+                style={{
+                  background: roleTarget.role === r.role ? 'rgba(244,166,35,.12)' : 'rgba(255,255,255,.04)',
+                  border: `1px solid ${roleTarget.role === r.role ? 'rgba(244,166,35,.4)' : 'rgba(255,255,255,.08)'}`,
+                }}>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{r.icon}</span>
+                  <div>
+                    <div className="font-semibold text-sm flex items-center gap-2">
+                      {r.label}
+                      {roleTarget.role === r.role && <span className="text-xs text-accent">(current)</span>}
+                    </div>
+                    <div className="text-muted text-xs mt-0.5">{r.desc}</div>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
 
-// ─── Policies ─────────────────────────────────────────────────────────
-function PoliciesTab({ data, token, refresh, showToast }: any) {
-  const policies: any[] = data.policies || []
+// ─── POLICIES ──────────────────────────────────────────────────────────────
+function PoliciesTab({ store, token, loading, toast, reload }: any) {
+  const policies: any[] = store.policies || []
   const [filter, setFilter] = useState('all')
-  const filtered = filter === 'all' ? policies : policies.filter(p => p.policyStatus === filter)
+  const [search, setSearch] = useState('')
+  const [viewing, setViewing] = useState<any>(null)
+  const [busy, setBusy] = useState('')
 
-  const activate = async (id: string) => {
+  const visible = policies
+    .filter(p => filter === 'all' || p.policyStatus === filter)
+    .filter(p => {
+      if (!search) return true
+      const q = search.toLowerCase()
+      return p.policyNumber?.toLowerCase().includes(q) || p.user?.name?.toLowerCase().includes(q) || p.user?.email?.toLowerCase().includes(q)
+    })
+
+  const counts = ['pending', 'active', 'expired', 'cancelled', 'lapsed']
+    .map(s => [s, policies.filter(p => p.policyStatus === s).length])
+
+  async function activate(id: string) {
+    setBusy(id + '_activate')
     try {
-      await api(token).patch(`/admin/policies/${id}/activate`)
-      showToast('Policy activated')
-      refresh()
-    } catch (e: any) {
-      showToast(e.response?.data?.message || 'Failed to activate policy')
-    }
+      await req(token, 'PATCH', `/admin/policies/${id}/activate`)
+      toast('Policy activated')
+      reload('policies', '/admin/policies')
+    } catch (e: any) { toast(e.message, false) }
+    setBusy('')
+  }
+
+  async function cancel(id: string) {
+    setBusy(id + '_cancel')
+    try {
+      await req(token, 'PATCH', `/admin/policies/${id}/cancel`)
+      toast('Policy cancelled')
+      setViewing(null)
+      reload('policies', '/admin/policies')
+    } catch (e: any) { toast(e.message, false) }
+    setBusy('')
   }
 
   return (
     <div>
-      <div className="flex flex-wrap justify-between items-center gap-3 mb-5">
-        <h1 className="font-syne font-black text-xl">All Policies</h1>
-        <div className="flex gap-2 flex-wrap">
-          {['all','pending','active','expired'].map(f => (
-            <button key={f} onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${filter === f ? 'bg-accent text-ink' : 'text-muted hover:text-white'}`}
-              style={filter !== f ? { background: 'rgba(255,255,255,0.06)' } : {}}>
-              {f}
-            </button>
-          ))}
+      <div className="flex flex-wrap justify-between items-start gap-3 mb-5">
+        <div>
+          <h1 className="font-syne font-black text-2xl">All Policies</h1>
+          <p className="text-muted text-sm mt-0.5">View and manage customer insurance policies</p>
         </div>
+        <button onClick={() => reload('policies', '/admin/policies')}
+          className="px-3 py-2 rounded-lg text-xs font-semibold text-muted hover:text-white flex items-center gap-1.5 transition-all"
+          style={{ background: 'rgba(255,255,255,.06)' }}>
+          {loading.policies ? <Spin /> : '↻'} Refresh
+        </button>
       </div>
-      <div className="space-y-3">
-        {filtered.length === 0 && <p className="text-muted text-sm py-8 text-center">No policies found</p>}
-        {filtered.map((p: any) => (
-          <div key={p.id} className="p-4 md:p-5 rounded-2xl" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <div className="flex flex-wrap justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="font-syne font-bold">{p.policyNumber}</span>
-                  <Badge status={p.policyStatus} />
+
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          className="flex-1 px-3 py-2 rounded-xl text-sm text-white outline-none"
+          style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)' }}
+          placeholder="Search policy number or customer…" />
+        <Filters options={['all', 'pending', 'active', 'expired', 'cancelled']} value={filter} onChange={setFilter} />
+      </div>
+
+      <div className="flex gap-2 flex-wrap mb-5 text-xs">
+        {counts.map(([s, n]) => n ? (
+          <span key={s as string} className="px-2 py-1 rounded-lg capitalize" style={{ background: 'rgba(255,255,255,.05)', color: '#8492B4' }}>
+            {s}: <strong className="text-white">{n as number}</strong>
+          </span>
+        ) : null)}
+      </div>
+
+      {loading.policies && !policies.length ? <div className="flex justify-center py-20"><Spin /></div>
+        : !visible.length ? <Empty icon="📋" title="No policies found" sub="Policies will appear here once customers purchase coverage" />
+        : (
+          <div className="space-y-3">
+            {visible.map((p: any) => (
+              <Card key={p.id}>
+                <div className="flex flex-wrap justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <span className="font-syne font-bold">{p.policyNumber}</span>
+                      <Badge status={p.policyStatus} />
+                      {p.autoRenew && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(0,194,168,.1)', color: '#00C2A8' }}>Auto-renew</span>}
+                    </div>
+                    <div className="flex gap-4 flex-wrap text-xs text-muted">
+                      <span>💰 <span className="text-accent font-semibold">₦{Number(p.premiumAmount || 0).toLocaleString()}</span></span>
+                      <span>👤 <span className="text-white">{p.user?.name || p.user?.email || '—'}</span></span>
+                      {p.coverageAmount && <span>🛡️ Cover: <span className="text-white">₦{Number(p.coverageAmount).toLocaleString()}</span></span>}
+                      {p.startDate && <span>📅 {new Date(p.startDate).toLocaleDateString('en-NG')} → {p.endDate ? new Date(p.endDate).toLocaleDateString('en-NG') : '?'}</span>}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 items-start shrink-0">
+                    <ActionBtn label="Details" color="ghost" onClick={() => setViewing(p)} />
+                    {p.policyStatus === 'pending' &&
+                      <ActionBtn label="✓ Activate" color="green" onClick={() => activate(p.id)} disabled={busy === p.id + '_activate'} />}
+                    {p.policyStatus === 'active' &&
+                      <ActionBtn label="Cancel" color="red" onClick={() => cancel(p.id)} disabled={busy === p.id + '_cancel'} />}
+                  </div>
                 </div>
-                <div className="flex gap-4 text-xs text-muted flex-wrap">
-                  <span>Premium: <span className="text-accent font-semibold">₦{Number(p.premiumAmount).toLocaleString()}</span></span>
-                  <span>User: <span className="text-white">{p.user?.name || '—'}</span></span>
-                  {p.startDate && <span>From: {new Date(p.startDate).toLocaleDateString()}</span>}
-                  {p.endDate && <span>To: {new Date(p.endDate).toLocaleDateString()}</span>}
-                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+
+      {viewing && (
+        <Modal title={`Policy — ${viewing.policyNumber}`} wide onClose={() => setViewing(null)}>
+          <div className="grid grid-cols-2 gap-2.5 mb-5">
+            {[
+              ['Policy No.',   viewing.policyNumber],
+              ['Status',       <Badge status={viewing.policyStatus} />],
+              ['Premium',      <span key="a" className="text-accent font-bold">₦{Number(viewing.premiumAmount || 0).toLocaleString()}</span>],
+              ['Coverage',     viewing.coverageAmount ? `₦${Number(viewing.coverageAmount).toLocaleString()}` : '—'],
+              ['Customer',     viewing.user?.name || '—'],
+              ['Email',        viewing.user?.email || '—'],
+              ['Start Date',   viewing.startDate ? new Date(viewing.startDate).toLocaleDateString('en-NG', { dateStyle: 'long' }) : 'Not started'],
+              ['End Date',     viewing.endDate   ? new Date(viewing.endDate).toLocaleDateString('en-NG', { dateStyle: 'long' }) : '—'],
+              ['Commission',   `₦${Number(viewing.commissionAmount || 0).toLocaleString()}`],
+              ['Auto-renew',   viewing.autoRenew ? 'Yes' : 'No'],
+              ['Created',      viewing.createdAt ? new Date(viewing.createdAt).toLocaleDateString('en-NG', { dateStyle: 'long' }) : '—'],
+            ].map(([l, v]: any) => (
+              <div key={l} className="p-3 rounded-xl" style={{ background: 'rgba(255,255,255,.04)' }}>
+                <div className="text-muted text-xs mb-1">{l}</div>
+                <div className="text-sm font-medium">{v}</div>
               </div>
-              {p.policyStatus === 'pending' && (
-                <button onClick={() => activate(p.id)} className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-                  style={{ background: 'rgba(46,201,126,0.15)', color: '#2EC97E', border: '1px solid rgba(46,201,126,0.3)' }}>
-                  Activate
-                </button>
-              )}
+            ))}
+          </div>
+          {viewing.policyDetails && Object.keys(viewing.policyDetails).length > 0 && (
+            <div className="p-3 rounded-xl mb-4" style={{ background: 'rgba(255,255,255,.04)' }}>
+              <div className="text-muted text-xs mb-2">Policy Details</div>
+              <pre className="text-xs text-white/70 overflow-auto max-h-40">{JSON.stringify(viewing.policyDetails, null, 2)}</pre>
+            </div>
+          )}
+          {viewing.documentUrl && (
+            <a href={viewing.documentUrl} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold mb-4 transition-all hover:brightness-110"
+              style={{ background: 'rgba(59,130,246,.1)', color: '#60a5fa', border: '1px solid rgba(59,130,246,.2)' }}>
+              📄 View Policy Document
+            </a>
+          )}
+          <div className="flex gap-3">
+            {viewing.policyStatus === 'pending' && (
+              <button onClick={() => { activate(viewing.id); setViewing(null) }}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+                style={{ background: '#2EC97E', color: '#0A0F1E' }}>✓ Activate Policy</button>
+            )}
+            {viewing.policyStatus === 'active' && (
+              <button onClick={() => cancel(viewing.id)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold"
+                style={{ background: 'rgba(232,69,69,.15)', color: '#E84545', border: '1px solid rgba(232,69,69,.3)' }}>
+                Cancel Policy
+              </button>
+            )}
+          </div>
+        </Modal>
+      )}
+    </div>
+  )
+}
+
+// ─── ANALYTICS ─────────────────────────────────────────────────────────────
+function AnalyticsTab({ store, token, loading, toast, reload }: any) {
+  const a = store.analytics || {}
+  const s = store.stats || {}
+  const commissions: any[] = a.commissions || []
+  const summary = a.summary || {}
+  const [start, setStart] = useState('')
+  const [end, setEnd] = useState('')
+  const [fetching, setFetching] = useState(false)
+
+  async function fetchRange() {
+    setFetching(true)
+    try {
+      const params = new URLSearchParams()
+      if (start) params.set('startDate', start)
+      if (end) params.set('endDate', end)
+      const path = `/admin/analytics/revenue${params.toString() ? '?' + params : ''}`
+      const data = await req(token, 'GET', path)
+      // Manually set without going through load cache
+      reload('analytics', path)
+    } catch (e: any) { toast(e.message, false) }
+    setFetching(false)
+  }
+
+  function clearRange() {
+    setStart(''); setEnd('')
+    reload('analytics', '/admin/analytics/revenue')
+  }
+
+  const revenueKpis = [
+    { label: 'Total Revenue',     value: s.totalRevenue    != null ? `₦${Number(s.totalRevenue).toLocaleString()}`    : '—', icon: '💰', color: '#2EC97E', hint: 'Successful payments' },
+    { label: 'Gross Premiums',    value: summary.totalGross != null ? `₦${Number(summary.totalGross).toLocaleString()}` : '—', icon: '📊', color: '#F4A623', hint: 'Total premium volume' },
+    { label: 'Total Commissions', value: summary.totalCommission != null ? `₦${Number(summary.totalCommission).toLocaleString()}` : '—', icon: '💵', color: '#00C2A8', hint: 'Gross commissions earned' },
+    { label: 'Net Commissions',   value: summary.totalNet  != null ? `₦${Number(summary.totalNet).toLocaleString()}`   : '—', icon: '✅', color: '#7C6BFF', hint: 'After platform fees' },
+  ]
+
+  const busy = loading.analytics
+
+  return (
+    <div>
+      <h1 className="font-syne font-black text-2xl mb-1">Analytics & Revenue</h1>
+      <p className="text-muted text-sm mb-6">Commission reports and platform performance metrics</p>
+
+      {/* Date range */}
+      <Card className="mb-6">
+        <p className="text-muted text-xs uppercase tracking-widest font-semibold mb-4">Date Range Filter</p>
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="flex-1 min-w-36">
+            <label className="text-xs text-muted block mb-1.5">From</label>
+            <input type="date" value={start} onChange={e => setStart(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none"
+              style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)' }} />
+          </div>
+          <div className="flex-1 min-w-36">
+            <label className="text-xs text-muted block mb-1.5">To</label>
+            <input type="date" value={end} onChange={e => setEnd(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none"
+              style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)' }} />
+          </div>
+          <button onClick={fetchRange} disabled={fetching}
+            className="px-5 py-2 rounded-xl text-sm font-bold disabled:opacity-50 flex items-center gap-2 transition-all hover:brightness-110"
+            style={{ background: '#F4A623', color: '#0A0F1E' }}>
+            {fetching && <Spin />} Apply Filter
+          </button>
+          {(start || end) && (
+            <button onClick={clearRange} className="px-4 py-2 rounded-xl text-sm font-semibold text-muted hover:text-white transition-all"
+              style={{ background: 'rgba(255,255,255,.06)' }}>Clear</button>
+          )}
+        </div>
+      </Card>
+
+      {/* Revenue KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        {revenueKpis.map(k => (
+          <Card key={k.label}>
+            <div className="text-2xl mb-2">{k.icon}</div>
+            {busy ? <div className="h-7 w-20 rounded-lg animate-pulse mb-0.5" style={{ background: 'rgba(255,255,255,.08)' }} />
+              : <div className="font-syne font-black text-xl mb-0.5" style={{ color: k.color }}>{k.value}</div>}
+            <div className="text-muted text-xs uppercase tracking-wider">{k.label}</div>
+            <div className="text-muted text-xs mt-0.5 opacity-60">{k.hint}</div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Platform stats */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+        {[
+          ['Total Policies',  s.totalPolicies,  '#F4A623'],
+          ['Active Policies', s.activePolicies, '#2EC97E'],
+          ['Total Claims',    s.totalClaims,    '#7C6BFF'],
+          ['Open Claims',     s.openClaims,     '#E84545'],
+          ['Total Users',     s.totalUsers,     '#00C2A8'],
+          ['Commission Records', summary.count ?? commissions.length, '#8492B4'],
+        ].map(([l, v, c]: any) => (
+          <div key={l} className="p-4 rounded-xl flex items-center gap-3"
+            style={{ background: 'rgba(13,27,62,.6)', border: '1px solid rgba(255,255,255,.06)' }}>
+            <div>
+              <div className="font-syne font-bold text-lg" style={{ color: c }}>{v ?? '—'}</div>
+              <div className="text-muted text-xs">{l}</div>
             </div>
           </div>
         ))}
       </div>
+
+      {/* Commission table */}
+      <Card>
+        <div className="flex justify-between items-center mb-4">
+          <p className="font-syne font-bold">Commission Ledger</p>
+          <span className="text-muted text-xs">{commissions.length} records</span>
+        </div>
+        {busy ? (
+          <div className="flex justify-center py-10"><Spin /></div>
+        ) : commissions.length === 0 ? (
+          <Empty icon="💵" title="No commission records" sub="Records appear here as policies are purchased" />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,.07)' }}>
+                  {['Policy', 'Provider', 'Premium', 'Rate', 'Commission', 'Net', 'Status', 'Date'].map(h => (
+                    <th key={h} className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wider text-muted">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {commissions.map((c: any, i: number) => (
+                  <tr key={c.id || i} className="transition-all hover:bg-white/5" style={{ borderBottom: '1px solid rgba(255,255,255,.04)' }}>
+                    <td className="py-3 pr-4 font-mono text-xs text-muted">{c.policyId?.slice(0, 8)}…</td>
+                    <td className="py-3 pr-4 text-xs">{c.providerId?.slice(0, 8)}…</td>
+                    <td className="py-3 pr-4 text-accent font-semibold">₦{Number(c.grossPremium || 0).toLocaleString()}</td>
+                    <td className="py-3 pr-4 text-muted">{c.commissionRate ? (Number(c.commissionRate) * 100).toFixed(0) + '%' : '—'}</td>
+                    <td className="py-3 pr-4 font-bold" style={{ color: '#2EC97E' }}>₦{Number(c.commissionAmount || 0).toLocaleString()}</td>
+                    <td className="py-3 pr-4" style={{ color: '#00C2A8' }}>₦{Number(c.netCommission || 0).toLocaleString()}</td>
+                    <td className="py-3 pr-4"><Badge status={c.status || 'pending'} /></td>
+                    <td className="py-3 text-muted text-xs">{c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-NG') : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
     </div>
   )
 }

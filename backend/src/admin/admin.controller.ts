@@ -38,6 +38,12 @@ export class AdminController {
   @ApiOperation({ summary: 'Reactivate a user account' })
   activateUser(@Param('id') id: string) { return this.adminService.activateUser(id); }
 
+  @Patch('users/:id/role')
+  @ApiOperation({ summary: 'Change a user role' })
+  changeUserRole(@Param('id') id: string, @Body() body: { role: string }) {
+    return this.adminService.changeUserRole(id, body.role);
+  }
+
   // ── POLICIES ──────────────────────────────────────────────
   @Get('policies')
   @ApiOperation({ summary: 'List all policies' })
@@ -49,12 +55,20 @@ export class AdminController {
   @ApiOperation({ summary: 'Manually activate a policy' })
   activatePolicy(@Param('id') id: string) { return this.adminService.activatePolicy(id); }
 
+  @Patch('policies/:id/cancel')
+  @ApiOperation({ summary: 'Cancel an active policy' })
+  cancelPolicy(@Param('id') id: string) { return this.adminService.cancelPolicy(id); }
+
   // ── CLAIMS ────────────────────────────────────────────────
   @Get('claims')
   @ApiOperation({ summary: 'List all claims' })
   getClaims(@Query('status') status?: string) {
     return this.adminService.getClaims({ status });
   }
+
+  @Patch('claims/:id/review')
+  @ApiOperation({ summary: 'Mark claim as under review' })
+  markUnderReview(@Param('id') id: string) { return this.adminService.markClaimUnderReview(id); }
 
   @Patch('claims/:id/approve')
   @ApiOperation({ summary: 'Approve a claim' })
@@ -81,6 +95,10 @@ export class AdminController {
   @ApiOperation({ summary: 'Onboard a new insurance provider' })
   createProvider(@Body() body: any) { return this.adminService.createProvider(body); }
 
+  @Patch('providers/:id')
+  @ApiOperation({ summary: 'Edit a provider' })
+  updateProvider(@Param('id') id: string, @Body() body: any) { return this.adminService.updateProvider(id, body); }
+
   @Patch('providers/:id/activate')
   @ApiOperation({ summary: 'Activate a provider' })
   activateProvider(@Param('id') id: string) { return this.adminService.setProviderStatus(id, 'active'); }
@@ -97,6 +115,10 @@ export class AdminController {
   @Post('products')
   @ApiOperation({ summary: 'Add a new insurance product' })
   createProduct(@Body() body: any) { return this.adminService.createProduct(body); }
+
+  @Patch('products/:id')
+  @ApiOperation({ summary: 'Edit a product' })
+  updateProduct(@Param('id') id: string, @Body() body: any) { return this.adminService.updateProduct(id, body); }
 
   @Patch('products/:id/activate')
   @ApiOperation({ summary: 'Activate a product' })

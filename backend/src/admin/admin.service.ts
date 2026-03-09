@@ -58,6 +58,11 @@ export class AdminService {
     return { message: 'User activated', id: userId };
   }
 
+  async changeUserRole(userId: string, role: string) {
+    await this.userRepo.update(userId, { role: role as any });
+    return { message: 'Role updated', id: userId, role };
+  }
+
   // ── POLICIES ──────────────────────────────────────────────
   async getPolicies(filters: { status?: string }) {
     const qb = this.policyRepo.createQueryBuilder('p')
@@ -82,6 +87,13 @@ export class AdminService {
     return { message: 'Policy activated', id: policyId };
   }
 
+  async cancelPolicy(policyId: string) {
+    const policy = await this.policyRepo.findOne({ where: { id: policyId } });
+    if (!policy) throw new NotFoundException('Policy not found');
+    await this.policyRepo.update(policyId, { policyStatus: PolicyStatus.CANCELLED });
+    return { message: 'Policy cancelled', id: policyId };
+  }
+
   // ── CLAIMS ────────────────────────────────────────────────
   async getClaims(filters: { status?: string }) {
     const qb = this.claimRepo.createQueryBuilder('c')
@@ -94,6 +106,13 @@ export class AdminService {
       ...c,
       user: c.user ? { id: c.user.id, name: c.user.name, email: c.user.email } : null,
     }));
+  }
+
+  async markClaimUnderReview(claimId: string) {
+    const claim = await this.claimRepo.findOne({ where: { id: claimId } });
+    if (!claim) throw new NotFoundException('Claim not found');
+    await this.claimRepo.update(claimId, { status: ClaimStatus.UNDER_REVIEW });
+    return { message: 'Claim moved to under review', id: claimId };
   }
 
   async approveClaim(claimId: string, reviewerId: string, note?: string) {
@@ -150,6 +169,18 @@ export class AdminService {
     return { message: `Provider ${status}`, id };
   }
 
+  async updateProvider(id: string, data: any) {
+    await this.providerRepo.update(id, {
+      name: data.name,
+      contactEmail: data.email,
+      contactPhone: data.phone,
+      address: data.address,
+      naicomLicense: data.licenseNumber,
+      description: data.description,
+    });
+    return { message: 'Provider updated', id };
+  }
+
   // ── PRODUCTS ──────────────────────────────────────────────
   async getProducts() {
     const products = await this.productRepo.find({ order: { createdAt: 'DESC' } });
@@ -182,6 +213,21 @@ export class AdminService {
   async setProductStatus(id: string, status: string) {
     await this.productRepo.update(id, { status } as any);
     return { message: `Product ${status}`, id };
+  }
+
+  async updateProduct(id: string, data: any) {
+    await this.productRepo.update(id, {
+      productName: data.name,
+      description: data.description,
+      category: data.productType,
+      premiumMin: data.minPremium,
+      premiumMax: data.maxPremium,
+      commissionRate: data.commissionRate,
+      durationMonths: data.durationMonths,
+      coverageDetails: data.coverageDetails ? { details: data.coverageDetails } : undefined,
+      providerId: data.providerId,
+    });
+    return { message: 'Product updated', id };
   }
 
   // ── ANALYTICS ─────────────────────────────────────────────
