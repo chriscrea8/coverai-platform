@@ -81,9 +81,32 @@ export class PoliciesService {
 
     const user = await this.usersService.findById(policy.userId);
     if (user) {
+      const renewalDate = policy.endDate
+        ? new Date(new Date(policy.endDate).getTime() - 30 * 24 * 60 * 60 * 1000)
+        : null;
+
       await this.notificationsService.sendEmail(user, {
-        subject: '🎉 Policy Activated!',
-        message: `Congratulations! Your policy ${policy.policyNumber} is now active.`,
+        subject: `🎉 You're Covered! Policy ${policy.policyNumber} is Active`,
+        message: [
+          `Hello ${user.name},`,
+          '',
+          'Congratulations! Your insurance policy is now active. Here are your details:',
+          '',
+          `Policy Number: ${policy.policyNumber}`,
+          `Premium Paid: ₦${Number(policy.premiumAmount).toLocaleString()}`,
+          policy.coverageAmount ? `Coverage Amount: ₦${Number(policy.coverageAmount).toLocaleString()}` : null,
+          policy.startDate ? `Start Date: ${new Date(policy.startDate).toLocaleDateString('en-NG', { dateStyle: 'long' })}` : null,
+          policy.endDate   ? `End Date:   ${new Date(policy.endDate).toLocaleDateString('en-NG', { dateStyle: 'long' })}` : null,
+          renewalDate      ? `Renewal Reminder: ${renewalDate.toLocaleDateString('en-NG', { dateStyle: 'long' })}` : null,
+          '',
+          'What to do next:',
+          '• Your policy document will be attached within 24 hours',
+          '• To file a claim, log in to your dashboard at coverai.ng/dashboard',
+          '• For emergency support, email claims@coverai.ng',
+          '',
+          'Thank you for choosing CoverAI.',
+          '— The CoverAI Team',
+        ].filter(l => l !== null).join('\n'),
       }).catch(() => {});
     }
 

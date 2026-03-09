@@ -6,11 +6,21 @@ import { policiesApi, claimsApi, paymentsApi } from '@/lib/api'
 import { useAuthStore, hydrateAuth } from '@/lib/store'
 import { Suspense } from 'react'
 
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'
+
+async function apiFetch(token: string, path: string) {
+  const res = await fetch(`${API}${path}`, { headers: { Authorization: `Bearer ${token}` } })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) return null
+  return data?.data ?? data
+}
+
 const NAV_ITEMS = [
-  { id: 'overview',  icon: '📊', label: 'Overview'    },
-  { id: 'policies',  icon: '📋', label: 'My Policies' },
-  { id: 'claims',    icon: '🛡️', label: 'Claims'      },
-  { id: 'payments',  icon: '💳', label: 'Payments'    },
+  { id: 'overview',  icon: '📊', label: 'Overview'       },
+  { id: 'policies',  icon: '📋', label: 'My Policies'    },
+  { id: 'claims',    icon: '🛡️', label: 'Claims'         },
+  { id: 'payments',  icon: '💳', label: 'Payments'       },
+  { id: 'recommended', icon: '✨', label: 'For You'      },
 ]
 
 const STATUS_COLOR: Record<string, string> = {
@@ -38,6 +48,7 @@ function DashboardInner() {
   const [policies, setPolicies] = useState<any[]>([])
   const [claims, setClaims]     = useState<any[]>([])
   const [payments, setPayments] = useState<any[]>([])
+  const [recommendations, setRecommendations] = useState<any[]>([])
   const [loading, setLoading]   = useState(true)
   const [highlightPolicy, setHighlightPolicy] = useState(false)
   const [dismissedVerification, setDismissedVerification] = useState(false)
@@ -65,6 +76,13 @@ function DashboardInner() {
       if (pay.status === 'fulfilled') setPayments(pay.value.data.data || pay.value.data || [])
     } catch {}
     setLoading(false)
+    // Load recommendations async (non-blocking)
+    const token = localStorage.getItem('access_token')
+    if (token) {
+      apiFetch(token, '/recommendations').then(data => {
+        if (Array.isArray(data)) setRecommendations(data)
+      }).catch(() => {})
+    }
   }
 
   const logout = () => {
@@ -465,6 +483,81 @@ function DashboardInner() {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ── Recommended For You ── */}
+          {active === 'recommended' && (
+            <div>
+              <div className="mb-5">
+                <h2 className="font-syne font-black text-xl md:text-2xl">Recommended For You ✨</h2>
+                <p className="text-muted text-sm mt-1">AI-powered suggestions based on your profile and similar users</p>
+              </div>
+
+              {recommendations.length === 0 ? (
+                <div className="text-center py-16">
+                  <div className="text-5xl mb-4">✨</div>
+                  <p className="text-muted mb-4">Building your personalised recommendations…</p>
+                  <Link href="/coverage" className="px-5 py-2.5 rounded-xl bg-accent text-ink text-sm font-bold inline-block">Browse All Plans</Link>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {recommendations.map((r: any, i: number) => (
+                    <div key={r.product?.id || i} className="p-5 rounded-2xl"
+                      style={{ background: 'rgba(13,27,62,.8)', border: '1px solid rgba(255,255,255,.07)' }}>
+                      <div className="flex flex-wrap justify-between gap-3 mb-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className="font-syne font-bold">{r.product?.name || r.product?.productName}</span>
+                            <span className="px-2 py-0.5 rounded-full text-xs capitalize"
+                              style={{ background: 'rgba(0,194,168,.1)', color: '#00C2A8', border: '1px solid rgba(0,194,168,.2)' }}>
+                              {r.product?.productType || r.product?.category}
+                            </span>
+                            {r.matchType === 'collaborative' && (
+                              <span className="px-2 py-0.5 rounded-full text-xs"
+                                style={{ background: 'rgba(124,107,255,.1)', color: '#7C6BFF', border: '1px solid rgba(124,107,255,.2)' }}>
+                                👥 Popular
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-muted text-sm line-clamp-2">{r.product?.description}</p>
+                        </div>
+                      </div>
+
+                      {/* AI reason */}
+                      <div className="flex items-center gap-2 p-2.5 rounded-xl mb-3"
+                        style={{ background: 'rgba(244,166,35,.08)', border: '1px solid rgba(244,166,35,.2)' }}>
+                        <span className="text-sm">✨</span>
+                        <span className="text-xs" style={{ color: '#F4A623' }}>{r.reason}</span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex gap-4 text-xs text-muted">
+                          {r.estimatedPremium?.min > 0 && (
+                            <span>From <strong className="text-accent">₦{Number(r.estimatedPremium.min).toLocaleString()}</strong>/yr</span>
+                          )}
+                          {r.processingFee > 0 && (
+                            <span>Processing fee: <strong className="text-white">₦{Number(r.processingFee).toLocaleString()}</strong></span>
+                          )}
+                          <span>Score: <strong className="text-white">{r.score}</strong></span>
+                        </div>
+                        <Link href={`/coverage?product=${r.product?.id}`}
+                          className="px-4 py-2 rounded-xl text-sm font-bold transition-all hover:brightness-110"
+                          style={{ background: '#F4A623', color: '#0A0F1E' }}>
+                          Get Quote →
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-6 p-4 rounded-2xl" style={{ background: 'rgba(13,27,62,.6)', border: '1px solid rgba(255,255,255,.06)' }}>
+                <p className="text-muted text-xs text-center">
+                  Recommendations improve as you use CoverAI. A small processing fee (₦500–₦2,000) applies to AI-assisted purchases.{' '}
+                  <Link href="/legal/terms" className="text-accent hover:underline">Learn more</Link>
+                </p>
+              </div>
             </div>
           )}
         </main>

@@ -21,7 +21,21 @@ async function bootstrap() {
   const frontendUrl = process.env.FRONTEND_URL || 'https://coverai-platform.vercel.app';
 
   // Security
-  app.use(helmet({ contentSecurityPolicy: false }));
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:', 'https:'],
+        connectSrc: ["'self'", 'https://api.paystack.co'],
+      },
+    },
+    hsts: { maxAge: 31536000, includeSubDomains: true },
+    noSniff: true,
+    xssFilter: true,
+    hidePoweredBy: true,
+  }));
   app.use(compression());
 
   // CORS - allow frontend and all during development
@@ -43,7 +57,7 @@ async function bootstrap() {
   // Global pipes
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
-    forbidNonWhitelisted: false,
+    forbidNonWhitelisted: true,
     transform: true,
     transformOptions: { enableImplicitConversion: true },
   }));

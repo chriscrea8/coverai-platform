@@ -93,3 +93,15 @@ export const smeApi = {
   getProfile: () => api.get('/sme/profile'),
   update: (data: any) => api.patch('/sme/profile', data),
 }
+
+// ── Recommendations ───────────────────────────────────────────
+export const recommendationsApi = {
+  get: (params?: Record<string, string>) => api.get('/recommendations', { params }),
+  getQuote: (productId: string, context?: Record<string, any>) => api.post('/recommendations/quote', { productId, ...context }),
+}
+
+// ── Auth extended ─────────────────────────────────────────────
+export const authExtendedApi = {
+  verifyEmail: (otp: string) => api.post('/auth/verify-email', { otp }),
+  resendOtp: () => api.post('/auth/resend-otp'),
+}
