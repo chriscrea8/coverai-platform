@@ -3,8 +3,8 @@ import { IsUUID, IsNumber, IsPositive, IsOptional, IsBoolean } from 'class-valid
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class PurchasePolicyDto {
-  @ApiProperty() @IsUUID() productId: string;
-  @ApiProperty() @IsUUID() providerId: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() productId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() providerId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() smeId?: string;
   @ApiProperty() @IsNumber() @IsPositive() premiumAmount: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() coverageAmount?: number;

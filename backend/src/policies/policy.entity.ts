@@ -8,8 +8,8 @@ export class Policy {
   @Column({ name: 'policy_number', unique: true }) policyNumber: string;
   @Column({ name: 'user_id' }) userId: string;
   @Column({ name: 'sme_id', nullable: true }) smeId: string;
-  @Column({ name: 'product_id' }) productId: string;
-  @Column({ name: 'provider_id' }) providerId: string;
+  @Column({ name: 'product_id', nullable: true }) productId: string;
+  @Column({ name: 'provider_id', nullable: true }) providerId: string;
   @Column({ name: 'premium_amount', type: 'decimal', precision: 12, scale: 2 }) premiumAmount: number;
   @Column({ name: 'commission_amount', type: 'decimal', precision: 12, scale: 2 }) commissionAmount: number;
   @Column({ name: 'coverage_amount', type: 'decimal', precision: 15, scale: 2, nullable: true }) coverageAmount: number;
