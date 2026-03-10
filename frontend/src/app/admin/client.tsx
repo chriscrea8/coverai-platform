@@ -1267,6 +1267,7 @@ function AnalyticsTab({ store, token, loading, toast, reload }: any) {
   const [end, setEnd] = useState('')
   const [fetching, setFetching] = useState(false)
   const [statusFilter, setStatusFilter] = useState('all')
+  const [providerFilter, setProviderFilter] = useState('all')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [acting, setActing] = useState(false)
   const [noteModal, setNoteModal] = useState<any>(null) // { id, action }
@@ -1286,7 +1287,11 @@ function AnalyticsTab({ store, token, loading, toast, reload }: any) {
 
   function clearRange() { setStart(''); setEnd(''); reload('analytics', '/admin/analytics/revenue') }
 
-  const visible = commissions.filter(c => statusFilter === 'all' || c.status === statusFilter)
+  const providerOptions = ['all', ...Array.from(new Set(commissions.map((c: any) => c.providerName).filter(Boolean)))]
+  const visible = commissions.filter(c =>
+    (statusFilter === 'all' || c.status === statusFilter) &&
+    (providerFilter === 'all' || c.providerName === providerFilter)
+  )
 
   function toggleSelect(id: string) {
     setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
@@ -1317,6 +1322,29 @@ function AnalyticsTab({ store, token, loading, toast, reload }: any) {
       setSelected(new Set())
     } catch (e: any) { toast(e.message, false) }
     setActing(false)
+  }
+
+  function exportCsv() {
+    const rows = [
+      ['Policy Number', 'Provider', 'Gross Premium', 'Rate', 'Commission', 'Platform Fee', 'Net Commission', 'Status', 'Paid At', 'Date'],
+      ...visible.map((c: any) => [
+        c.policyNumber || c.policyId || '',
+        c.providerName || '',
+        c.grossPremium || 0,
+        c.commissionRate ? (Number(c.commissionRate) * 100).toFixed(0) + '%' : '',
+        c.commissionAmount || 0,
+        c.platformFee || 0,
+        c.netCommission || 0,
+        c.status || '',
+        c.paidAt ? new Date(c.paidAt).toLocaleDateString('en-NG') : '',
+        c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-NG') : '',
+      ])
+    ]
+    const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n')
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+    a.download = `commission-ledger-${new Date().toISOString().slice(0,10)}.csv`
+    a.click()
   }
 
   function openNoteModal(id: string, action: 'paid') {
@@ -1436,6 +1464,18 @@ function AnalyticsTab({ store, token, loading, toast, reload }: any) {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Filters options={['all', 'pending', 'processing', 'paid']} value={statusFilter} onChange={setStatusFilter} />
+            {providerOptions.length > 2 && (
+              <select value={providerFilter} onChange={e => setProviderFilter(e.target.value)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white outline-none"
+                style={{ background: 'rgba(255,255,255,.07)', border: '1px solid rgba(255,255,255,.12)' }}>
+                {providerOptions.map(p => <option key={p} value={p}>{p === 'all' ? 'All Providers' : p}</option>)}
+              </select>
+            )}
+            <button onClick={exportCsv}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:brightness-110"
+              style={{ background: 'rgba(0,194,168,.12)', color: '#00C2A8', border: '1px solid rgba(0,194,168,.3)' }}>
+              ↓ Export CSV
+            </button>
             {selected.size > 0 && (
               <div className="flex gap-2">
                 <span className="text-xs text-muted py-2">{selected.size} selected</span>
