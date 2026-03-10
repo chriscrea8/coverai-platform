@@ -22,6 +22,25 @@ interface AuthState {
   isLoggedIn: () => boolean
 }
 
+/** Decode JWT payload without verifying signature */
+function decodeJwt(token: string): { exp?: number; sub?: string } | null {
+  try {
+    const payload = token.split('.')[1]
+    return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')))
+  } catch {
+    return null
+  }
+}
+
+/** Returns true only if token exists AND is not expired */
+function tokenIsValid(token: string | null): boolean {
+  if (!token) return false
+  const decoded = decodeJwt(token)
+  if (!decoded?.exp) return false
+  // Add 30s buffer to avoid edge cases
+  return decoded.exp > Math.floor(Date.now() / 1000) + 30
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   accessToken: null,
@@ -54,7 +73,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   isLoggedIn: () => {
     if (typeof window === 'undefined') return false
-    return !!localStorage.getItem('access_token')
+    const token = localStorage.getItem('access_token')
+    if (!tokenIsValid(token)) {
+      // Token expired — try refresh inline
+      const refresh = localStorage.getItem('refresh_token')
+      if (!refresh) {
+        // No refresh token either — clear and return false
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
+        localStorage.removeItem('user')
+        return false
+      }
+      // Has refresh token — return true optimistically,
+      // axios interceptor will handle the actual refresh on next API call
+      return true
+    }
+    return true
   },
 }))
 

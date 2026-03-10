@@ -84,7 +84,7 @@ CREATE TABLE insurance_providers (
 
 CREATE TABLE insurance_products (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    provider_id UUID NOT NULL REFERENCES insurance_providers(id) ON DELETE CASCADE,
+    provider_id UUID REFERENCES insurance_providers(id) ON DELETE SET NULL,
     product_name VARCHAR(255) NOT NULL,
     product_code VARCHAR(100) UNIQUE NOT NULL,
     category VARCHAR(100) NOT NULL,
@@ -110,8 +110,8 @@ CREATE TABLE policies (
     policy_number VARCHAR(50) UNIQUE NOT NULL,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     sme_id UUID REFERENCES sme_profiles(id) ON DELETE SET NULL,
-    product_id UUID NOT NULL REFERENCES insurance_products(id) ON DELETE RESTRICT,
-    provider_id UUID NOT NULL REFERENCES insurance_providers(id) ON DELETE RESTRICT,
+    product_id UUID REFERENCES insurance_products(id) ON DELETE SET NULL,
+    provider_id UUID REFERENCES insurance_providers(id) ON DELETE SET NULL,
     premium_amount DECIMAL(12,2) NOT NULL,
     commission_amount DECIMAL(12,2) NOT NULL,
     coverage_amount DECIMAL(15,2),
