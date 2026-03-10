@@ -10,7 +10,7 @@ export enum CommissionStatus {
 export class Commission {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ name: 'policy_id' }) policyId: string;
-  @Column({ name: 'provider_id' }) providerId: string;
+  @Column({ name: 'provider_id', nullable: true }) providerId: string;
   @Column({ name: 'payment_id', nullable: true }) paymentId: string;
   @Column({ name: 'gross_premium', type: 'decimal', precision: 12, scale: 2 }) grossPremium: number;
   @Column({ name: 'commission_rate', type: 'decimal', precision: 5, scale: 4 }) commissionRate: number;

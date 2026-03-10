@@ -52,14 +52,16 @@ export class PoliciesService {
     await this.policyRepo.save(policy);
     this.logger.log(`Policy created: ${policyNumber} for user ${userId}`);
 
-    // Create commission record
-    await this.commissionsService.create({
-      policyId: policy.id,
-      providerId: policy.providerId,
-      grossPremium: policy.premiumAmount,
-      commissionRate,
-      commissionAmount,
-    });
+    // Create commission record (only when we have a real provider)
+    if (policy.providerId) {
+      await this.commissionsService.create({
+        policyId: policy.id,
+        providerId: policy.providerId,
+        grossPremium: policy.premiumAmount,
+        commissionRate,
+        commissionAmount,
+      }).catch(e => this.logger.warn('Commission create failed: ' + e.message));
+    }
 
     // Notify user
     const user = await this.usersService.findById(userId);

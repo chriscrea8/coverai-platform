@@ -24,7 +24,7 @@ export const jwtConfig = registerAs('jwt', () => {
   }
   return {
     secret: process.env.JWT_SECRET || 'dev_only_secret_not_for_production',
-    expiresIn: process.env.JWT_EXPIRES_IN || '15m',
+    expiresIn: process.env.JWT_EXPIRES_IN || '2h',
     refreshSecret: process.env.JWT_REFRESH_SECRET || 'dev_only_refresh_secret_not_for_production',
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   };
