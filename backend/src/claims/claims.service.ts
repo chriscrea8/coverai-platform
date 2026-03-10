@@ -1,3 +1,4 @@
+import { IsString, IsNumber, IsOptional, IsUUID, IsDateString, Min } from 'class-validator';
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -9,18 +10,18 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { UsersService } from '../users/users.service';
 
 export class CreateClaimDto {
-  policyId: string;
-  claimAmount: number;
-  description: string;
-  incidentDate: string;
-  incidentLocation?: string;
+  @IsUUID() policyId: string;
+  @IsNumber() @Min(1) claimAmount: number;
+  @IsString() description: string;
+  @IsDateString() incidentDate: string;
+  @IsOptional() @IsString() incidentLocation?: string;
 }
 
 export class ReviewClaimDto {
-  status: 'approved' | 'rejected';
-  approvedAmount?: number;
-  reviewerNotes?: string;
-  rejectionReason?: string;
+  @IsString() status: 'approved' | 'rejected';
+  @IsOptional() @IsNumber() approvedAmount?: number;
+  @IsOptional() @IsString() reviewerNotes?: string;
+  @IsOptional() @IsString() rejectionReason?: string;
 }
 
 @Injectable()
