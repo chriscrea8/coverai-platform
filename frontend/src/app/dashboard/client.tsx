@@ -53,6 +53,55 @@ function DashboardInner() {
   const [highlightPolicy, setHighlightPolicy] = useState(false)
   const [dismissedVerification, setDismissedVerification] = useState(false)
 
+  // ── Notifications ─────────────────────────────────────────
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [notifOpen, setNotifOpen] = useState(false)
+
+  const loadNotifications = useCallback(async () => {
+    const token = localStorage.getItem('access_token')
+    if (!token) return
+    try {
+      const data = await apiFetch(token, '/notifications')
+      // API returns plain array of notifications
+      const list = Array.isArray(data) ? data : (data?.notifications || [])
+      setNotifications(list)
+      setUnreadCount(list.filter((n: any) => n.status === 'sent' && n.type === 'in_app').length)
+    } catch {}
+  }, [])
+
+  const markRead = async (id: string) => {
+    const token = localStorage.getItem('access_token')
+    if (!token) return
+    await fetch(`${API}/notifications/${id}/read`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } })
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, readAt: new Date().toISOString(), status: 'read' } : n))
+    setUnreadCount(prev => Math.max(0, prev - 1))
+  }
+
+  const markAllRead = async () => {
+    const token = localStorage.getItem('access_token')
+    if (!token) return
+    await fetch(`${API}/notifications/mark-all-read`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } })
+    setNotifications(prev => prev.map(n => ({ ...n, readAt: new Date().toISOString(), status: 'read' })))
+    setUnreadCount(0)
+  }
+
+  function notifIcon(n: any) {
+    if (n.entityType === 'policy')  return n.title.includes('Active') ? '✅' : '📋'
+    if (n.entityType === 'claim')   return n.title.includes('Approved') ? '✅' : n.title.includes('Rejected') ? '❌' : '🛡️'
+    if (n.entityType === 'payment') return '💳'
+    return '🔔'
+  }
+
+  function timeAgo(date: string) {
+    const diff = (Date.now() - new Date(date).getTime()) / 1000
+    if (diff < 60)   return 'just now'
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+    return `${Math.floor(diff / 86400)}d ago`
+  }
+
+
   useEffect(() => {
     hydrateAuth()
     if (!isLoggedIn()) { router.push('/auth'); return }
@@ -63,6 +112,10 @@ function DashboardInner() {
       window.history.replaceState({}, '', '/dashboard')
     }
     loadData()
+    loadNotifications()
+    // Poll for new notifications every 30s
+    const interval = setInterval(loadNotifications, 30000)
+    return () => clearInterval(interval)
   }, [])
 
   const loadData = async () => {
@@ -109,6 +162,16 @@ function DashboardInner() {
         style={{ background: 'rgba(13,27,62,.97)', borderBottom: '1px solid rgba(255,255,255,.07)' }}>
         <Link href="/" className="font-syne font-black text-lg">Cover<span className="text-accent">AI</span></Link>
         <div className="flex items-center gap-2">
+          {/* Bell */}
+          <button onClick={() => { setNotifOpen(o => !o); setMenuOpen(false) }}
+            className="relative w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:text-white transition-all"
+            style={{ background: 'rgba(255,255,255,.06)' }}>
+            🔔
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full text-xs font-bold flex items-center justify-center"
+                style={{ background: '#E84545', color: '#fff', fontSize: '10px' }}>{unreadCount > 9 ? '9+' : unreadCount}</span>
+            )}
+          </button>
           <Link href="/settings" className="w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:text-white transition-all"
             style={{ background: 'rgba(255,255,255,.06)' }}>⚙️</Link>
           <button onClick={() => setMenuOpen(o => !o)} className="w-9 h-9 flex flex-col items-center justify-center gap-1.5 rounded-lg"
@@ -179,6 +242,15 @@ function DashboardInner() {
             )}
           </nav>
           <div className="border-t border-white/5 pt-3 space-y-0.5">
+            {/* Notifications bell */}
+            <button onClick={() => setNotifOpen(o => !o)}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-muted hover:text-white hover:bg-white/5 transition-all w-full text-left relative">
+              <span>🔔</span>Notifications
+              {unreadCount > 0 && (
+                <span className="ml-auto min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center"
+                  style={{ background: '#E84545', color: '#fff' }}>{unreadCount > 9 ? '9+' : unreadCount}</span>
+              )}
+            </button>
             <Link href="/settings" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-muted hover:text-white hover:bg-white/5 transition-all">
               <span>⚙️</span>Settings
             </Link>
@@ -188,7 +260,61 @@ function DashboardInner() {
           </div>
         </aside>
 
-        {/* ── Main content ── */}
+        {/* ── Notification Panel ── */}
+        {notifOpen && (
+          <div className="fixed inset-0 z-50 flex" onClick={() => setNotifOpen(false)}>
+            <div className="ml-auto w-full max-w-sm h-full flex flex-col shadow-2xl"
+              style={{ background: 'rgba(10,18,40,.98)', borderLeft: '1px solid rgba(255,255,255,.1)' }}
+              onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,.08)' }}>
+                <div>
+                  <h2 className="font-syne font-bold text-base">Notifications</h2>
+                  {unreadCount > 0 && <p className="text-xs text-muted mt-0.5">{unreadCount} unread</p>}
+                </div>
+                <div className="flex items-center gap-2">
+                  {unreadCount > 0 && (
+                    <button onClick={markAllRead} className="text-xs px-3 py-1.5 rounded-lg font-semibold transition-all hover:brightness-110"
+                      style={{ background: 'rgba(244,166,35,.15)', color: '#F4A623', border: '1px solid rgba(244,166,35,.3)' }}>
+                      Mark all read
+                    </button>
+                  )}
+                  <button onClick={() => setNotifOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:text-white"
+                    style={{ background: 'rgba(255,255,255,.06)' }}>✕</button>
+                </div>
+              </div>
+              {/* List */}
+              <div className="flex-1 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                    <div className="text-4xl mb-3">🔔</div>
+                    <p className="font-semibold text-sm mb-1">All caught up!</p>
+                    <p className="text-muted text-xs">Notifications about your policies, claims and payments will appear here.</p>
+                  </div>
+                ) : notifications.map(n => (
+                  <div key={n.id}
+                    onClick={() => !n.readAt && markRead(n.id)}
+                    className="px-5 py-4 cursor-pointer transition-all hover:bg-white/5"
+                    style={{ borderBottom: '1px solid rgba(255,255,255,.05)', background: n.readAt ? 'transparent' : 'rgba(26,58,143,.15)' }}>
+                    <div className="flex items-start gap-3">
+                      <span className="text-xl shrink-0 mt-0.5">{notifIcon(n)}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-0.5">
+                          <p className={`text-sm font-semibold truncate ${n.readAt ? 'text-muted' : 'text-white'}`}>{n.title}</p>
+                          {!n.readAt && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: '#F4A623' }} />}
+                        </div>
+                        <p className="text-xs text-muted line-clamp-2 leading-relaxed">{n.message}</p>
+                        <p className="text-xs mt-1.5" style={{ color: 'rgba(255,255,255,.3)' }}>{n.createdAt ? timeAgo(n.createdAt) : ''}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+
         <main className="flex-1 p-4 md:p-8 overflow-auto min-w-0">
 
           {/* Email verification banner */}

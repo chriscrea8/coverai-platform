@@ -105,3 +105,11 @@ export const authExtendedApi = {
   verifyEmail: (otp: string) => api.post('/auth/verify-email', { otp }),
   resendOtp: () => api.post('/auth/resend-otp'),
 }
+
+// ── Notifications ─────────────────────────────────────────────
+export const notificationsApi = {
+  getAll: (limit = 50) => api.get(`/notifications?limit=${limit}`),
+  getUnreadCount: () => api.get('/notifications/unread-count'),
+  markRead: (id: string) => api.patch(`/notifications/${id}/read`),
+  markAllRead: () => api.patch('/notifications/mark-all-read'),
+}

@@ -4,6 +4,14 @@ import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { Notification } from './notification.entity';
 
+export interface NotifPayload {
+  subject: string;
+  message: string;
+  entityType?: string;
+  entityId?: string;
+  metadata?: Record<string, any>;
+}
+
 @Injectable()
 export class NotificationsService implements OnModuleInit {
   private readonly logger = new Logger(NotificationsService.name);
@@ -19,7 +27,6 @@ export class NotificationsService implements OnModuleInit {
     this.resendApiKey = this.configService.get<string>('RESEND_API_KEY') || null;
     const from = this.configService.get<string>('RESEND_FROM');
     if (from) this.fromAddress = from;
-
     if (this.resendApiKey) {
       this.logger.log(`Resend email ready. From: ${this.fromAddress}`);
     } else {
@@ -27,11 +34,79 @@ export class NotificationsService implements OnModuleInit {
     }
   }
 
+  // ── IN-APP NOTIFICATION ──────────────────────────────────────────────────
+
+  async createInApp(
+    userId: string,
+    payload: NotifPayload,
+  ): Promise<Notification> {
+    const notif = this.notifRepo.create({
+      userId,
+      type: 'in_app',
+      title: payload.subject,
+      message: payload.message,
+      status: 'sent',
+      entityType: payload.entityType || null,
+      entityId: payload.entityId || null,
+      metadata: payload.metadata || {},
+      sentAt: new Date(),
+    });
+    return this.notifRepo.save(notif);
+  }
+
+  // Get all notifications for a user (newest first)
+  async getForUser(userId: string, limit = 50, type?: string) {
+    const where: any = { userId };
+    if (type) where.type = type;
+    return this.notifRepo.find({
+      where,
+      order: { createdAt: 'DESC' },
+      take: limit,
+    });
+  }
+
+  // Count unread in_app notifications
+  async countUnread(userId: string): Promise<number> {
+    return this.notifRepo.count({
+      where: { userId, type: 'in_app', status: 'sent' },
+    });
+  }
+
+  // Mark one notification as read
+  async markRead(id: string, userId: string) {
+    const notif = await this.notifRepo.findOne({ where: { id, userId } });
+    if (!notif) return null;
+    await this.notifRepo.update(id, { status: 'read', readAt: new Date() });
+    return { id, status: 'read' };
+  }
+
+  // Mark all in_app notifications as read for a user
+  async markAllRead(userId: string) {
+    await this.notifRepo
+      .createQueryBuilder()
+      .update(Notification)
+      .set({ status: 'read', readAt: new Date() })
+      .where('user_id = :userId AND type = :type AND status = :status', {
+        userId, type: 'in_app', status: 'sent',
+      })
+      .execute();
+    return { message: 'All notifications marked as read' };
+  }
+
+  // ── EMAIL ────────────────────────────────────────────────────────────────
+
   async sendEmail(
     user: { id: string; name: string; email: string },
-    payload: { subject: string; message: string },
+    payload: NotifPayload,
   ) {
-    // Save to notifications table
+    // 1. Create in_app notification too
+    try {
+      await this.createInApp(user.id, payload);
+    } catch (e) {
+      this.logger.warn('Failed to create in_app notification: ' + e.message);
+    }
+
+    // 2. Save email record
     let notifId: string | null = null;
     try {
       const notif = this.notifRepo.create({
@@ -40,15 +115,17 @@ export class NotificationsService implements OnModuleInit {
         title: payload.subject,
         message: payload.message,
         status: 'pending',
+        entityType: payload.entityType || null,
+        entityId: payload.entityId || null,
       });
       const saved = await this.notifRepo.save(notif);
       notifId = saved.id;
     } catch (e) {
-      this.logger.warn('Failed to save notification: ' + e.message);
+      this.logger.warn('Failed to save email notification: ' + e.message);
     }
 
+    // 3. Send via Resend (or log to console)
     if (this.resendApiKey) {
-      // Call Resend REST API directly — no SDK, no dependencies
       try {
         const res = await fetch('https://api.resend.com/emails', {
           method: 'POST',
@@ -66,21 +143,19 @@ export class NotificationsService implements OnModuleInit {
         });
 
         const result = await res.json() as any;
-
         if (!res.ok) {
           this.logger.error(`Resend API error for ${user.email}: ${JSON.stringify(result)}`);
         } else {
-          if (notifId) await this.notifRepo.update(notifId, { status: 'sent' }).catch(() => {});
-          this.logger.log(`Email sent via Resend to ${user.email} (id: ${result.id}): ${payload.subject}`);
+          if (notifId) await this.notifRepo.update(notifId, { status: 'sent', sentAt: new Date() }).catch(() => {});
+          this.logger.log(`Email sent to ${user.email}: ${payload.subject}`);
         }
       } catch (e) {
         this.logger.error(`Resend fetch failed for ${user.email}: ${e.message}`);
       }
     } else {
-      // Log to Railway console — OTPs visible in logs during dev
       this.logger.log(`[EMAIL] TO: ${user.email} | ${payload.subject}`);
       this.logger.log(`[EMAIL] ${payload.message}`);
-      if (notifId) await this.notifRepo.update(notifId, { status: 'sent' }).catch(() => {});
+      if (notifId) await this.notifRepo.update(notifId, { status: 'sent', sentAt: new Date() }).catch(() => {});
     }
   }
 

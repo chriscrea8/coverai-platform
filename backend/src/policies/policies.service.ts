@@ -69,6 +69,8 @@ export class PoliciesService {
       await this.notificationsService.sendEmail(user, {
         subject: 'Policy Created — Payment Required',
         message: `Your policy ${policyNumber} has been created. Complete payment to activate it.`,
+        entityType: 'policy',
+        entityId: policy.id,
       }).catch(() => {});
     }
 
@@ -109,6 +111,8 @@ export class PoliciesService {
           'Thank you for choosing CoverAI.',
           '— The CoverAI Team',
         ].filter(l => l !== null).join('\n'),
+        entityType: 'policy',
+        entityId: policy.id,
       }).catch(() => {});
     }
 

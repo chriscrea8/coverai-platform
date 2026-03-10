@@ -86,6 +86,8 @@ export class PaymentsService {
       if (user) await this.notificationsService.sendEmail(user, {
         subject: '✅ Payment Confirmed',
         message: `Payment of ₦${payment.amount} confirmed. Ref: ${payment.paymentReference}`,
+        entityType: 'payment',
+        entityId: payment.id,
       });
     } catch {}
   }

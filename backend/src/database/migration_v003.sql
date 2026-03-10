@@ -54,3 +54,37 @@ ORDER BY column_name;
 ALTER TABLE insurance_providers ADD COLUMN IF NOT EXISTS sync_status VARCHAR(20);
 ALTER TABLE insurance_providers ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMPTZ;
 ALTER TABLE insurance_providers ADD COLUMN IF NOT EXISTS synced_product_count INT DEFAULT 0;
+
+-- 5. Add 'in_app' to notification_type enum (safe)
+DO $$ BEGIN
+  ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'in_app';
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- 6. Ensure notifications table exists with correct schema
+CREATE TABLE IF NOT EXISTS notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL,
+  type VARCHAR(20) NOT NULL DEFAULT 'in_app',   -- 'in_app' | 'email'
+  title VARCHAR(255) NOT NULL,
+  message TEXT NOT NULL,
+  status VARCHAR(20) DEFAULT 'pending',          -- 'pending' | 'sent' | 'read'
+  entity_type VARCHAR(50),                       -- 'policy' | 'claim' | 'payment'
+  entity_id UUID,
+  metadata JSONB DEFAULT '{}',
+  sent_at TIMESTAMPTZ,
+  read_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Index for fast per-user lookups
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_type_status ON notifications(user_id, type, status);
+
+-- 7. Ensure notification.metadata column exists (may be missing in older schema)
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS entity_type VARCHAR(50);
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS entity_id UUID;
+
+-- Verify notifications table
+SELECT COUNT(*) AS notification_count FROM notifications;

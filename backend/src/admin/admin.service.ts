@@ -345,10 +345,25 @@ export class AdminService {
   }
 
   // ── ANALYTICS ─────────────────────────────────────────────
-  async getRevenueAnalytics(filters: { startDate?: string; endDate?: string }) {
+  async getRevenueAnalytics(filters: { startDate?: string; endDate?: string; providerId?: string; status?: string }) {
     return this.commissionsService.getReport({
       startDate: filters.startDate ? new Date(filters.startDate) : undefined,
-      endDate: filters.endDate ? new Date(filters.endDate) : undefined,
+      endDate:   filters.endDate   ? new Date(filters.endDate)   : undefined,
+      providerId: filters.providerId,
+      status:     filters.status,
     });
   }
+
+  async markCommissionPaid(id: string, notes?: string) {
+    return this.commissionsService.markAsPaid(id, notes);
+  }
+
+  async markCommissionProcessing(id: string) {
+    return this.commissionsService.markAsProcessing(id);
+  }
+
+  async bulkMarkCommissionsPaid(ids: string[]) {
+    return this.commissionsService.bulkMarkAsPaid(ids);
+  }
+
 }

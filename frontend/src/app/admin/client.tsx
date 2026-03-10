@@ -1266,6 +1266,11 @@ function AnalyticsTab({ store, token, loading, toast, reload }: any) {
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
   const [fetching, setFetching] = useState(false)
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [acting, setActing] = useState(false)
+  const [noteModal, setNoteModal] = useState<any>(null) // { id, action }
+  const [note, setNote] = useState('')
 
   async function fetchRange() {
     setFetching(true)
@@ -1274,31 +1279,74 @@ function AnalyticsTab({ store, token, loading, toast, reload }: any) {
       if (start) params.set('startDate', start)
       if (end) params.set('endDate', end)
       const path = `/admin/analytics/revenue${params.toString() ? '?' + params : ''}`
-      const data = await req(token, 'GET', path)
-      // Manually set without going through load cache
       reload('analytics', path)
     } catch (e: any) { toast(e.message, false) }
     setFetching(false)
   }
 
-  function clearRange() {
-    setStart(''); setEnd('')
-    reload('analytics', '/admin/analytics/revenue')
+  function clearRange() { setStart(''); setEnd(''); reload('analytics', '/admin/analytics/revenue') }
+
+  const visible = commissions.filter(c => statusFilter === 'all' || c.status === statusFilter)
+
+  function toggleSelect(id: string) {
+    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
+  function toggleAll() {
+    const ids = visible.map((c: any) => c.id)
+    setSelected(prev => prev.size === ids.length ? new Set() : new Set(ids))
+  }
+
+  async function markOne(id: string, action: 'processing' | 'paid', notes?: string) {
+    setActing(true)
+    try {
+      await req(token, 'PATCH', `/admin/commissions/${id}/${action}`, notes ? { notes } : {})
+      toast(`Commission marked as ${action}`)
+      reload('analytics', '/admin/analytics/revenue')
+      setSelected(new Set())
+    } catch (e: any) { toast(e.message, false) }
+    setActing(false)
+  }
+
+  async function bulkPay() {
+    if (!selected.size) return
+    setActing(true)
+    try {
+      await req(token, 'POST', '/admin/commissions/bulk-paid', { ids: Array.from(selected) })
+      toast(`${selected.size} commissions marked as paid`)
+      reload('analytics', '/admin/analytics/revenue')
+      setSelected(new Set())
+    } catch (e: any) { toast(e.message, false) }
+    setActing(false)
+  }
+
+  function openNoteModal(id: string, action: 'paid') {
+    setNoteModal({ id, action }); setNote('')
+  }
+
+  const busy = loading.analytics
 
   const revenueKpis = [
     { label: 'Total Revenue',     value: s.totalRevenue    != null ? `₦${Number(s.totalRevenue).toLocaleString()}`    : '—', icon: '💰', color: '#2EC97E', hint: 'Successful payments' },
     { label: 'Gross Premiums',    value: summary.totalGross != null ? `₦${Number(summary.totalGross).toLocaleString()}` : '—', icon: '📊', color: '#F4A623', hint: 'Total premium volume' },
-    { label: 'Total Commissions', value: summary.totalCommission != null ? `₦${Number(summary.totalCommission).toLocaleString()}` : '—', icon: '💵', color: '#00C2A8', hint: 'Gross commissions earned' },
-    { label: 'Net Commissions',   value: summary.totalNet  != null ? `₦${Number(summary.totalNet).toLocaleString()}`   : '—', icon: '✅', color: '#7C6BFF', hint: 'After platform fees' },
+    { label: 'Commissions Earned',value: summary.totalCommission != null ? `₦${Number(summary.totalCommission).toLocaleString()}` : '—', icon: '💵', color: '#00C2A8', hint: 'Gross commissions' },
+    { label: 'Net to Disburse',   value: summary.totalNet  != null ? `₦${Number(summary.totalNet).toLocaleString()}`   : '—', icon: '✅', color: '#7C6BFF', hint: 'After platform fees' },
   ]
 
-  const busy = loading.analytics
+  const ledgerStatusCards = [
+    { key: 'pending',    label: 'Pending Payout',  color: '#F4A623', value: summary.totalPending    != null ? `₦${Number(summary.totalPending).toLocaleString()}`    : '—', count: summary.pendingCount ?? 0 },
+    { key: 'processing', label: 'Processing',       color: '#7C6BFF', value: summary.totalNet != null ? '—' : '—', count: summary.processingCount ?? 0 },
+    { key: 'paid',       label: 'Paid Out',         color: '#2EC97E', value: summary.totalPaid       != null ? `₦${Number(summary.totalPaid).toLocaleString()}`       : '—', count: summary.paidCount ?? 0 },
+  ]
+
+  const pendingSelected = Array.from(selected).filter(id => {
+    const c = commissions.find(c => c.id === id)
+    return c?.status === 'pending'
+  })
 
   return (
     <div>
       <h1 className="font-syne font-black text-2xl mb-1">Analytics & Revenue</h1>
-      <p className="text-muted text-sm mb-6">Commission reports and platform performance metrics</p>
+      <p className="text-muted text-sm mb-6">Commission ledger and platform performance metrics</p>
 
       {/* Date range */}
       <Card className="mb-6">
@@ -1329,7 +1377,7 @@ function AnalyticsTab({ store, token, loading, toast, reload }: any) {
       </Card>
 
       {/* Revenue KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         {revenueKpis.map(k => (
           <Card key={k.label}>
             <div className="text-2xl mb-2">{k.icon}</div>
@@ -1341,6 +1389,22 @@ function AnalyticsTab({ store, token, loading, toast, reload }: any) {
         ))}
       </div>
 
+      {/* Commission payout status cards */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        {ledgerStatusCards.map(k => (
+          <button key={k.key} onClick={() => setStatusFilter(statusFilter === k.key ? 'all' : k.key)}
+            className="p-4 rounded-xl text-left transition-all hover:brightness-110"
+            style={{
+              background: statusFilter === k.key ? `${k.color}18` : 'rgba(13,27,62,.6)',
+              border: `1px solid ${statusFilter === k.key ? k.color + '50' : 'rgba(255,255,255,.06)'}`,
+            }}>
+            <div className="font-syne font-bold text-lg" style={{ color: k.color }}>{k.value}</div>
+            <div className="text-white text-sm font-semibold">{k.label}</div>
+            <div className="text-muted text-xs mt-0.5">{k.count} record{k.count !== 1 ? 's' : ''}</div>
+          </button>
+        ))}
+      </div>
+
       {/* Platform stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
         {[
@@ -1349,7 +1413,7 @@ function AnalyticsTab({ store, token, loading, toast, reload }: any) {
           ['Total Claims',    s.totalClaims,    '#7C6BFF'],
           ['Open Claims',     s.openClaims,     '#E84545'],
           ['Total Users',     s.totalUsers,     '#00C2A8'],
-          ['Commission Records', summary.count ?? commissions.length, '#8492B4'],
+          ['Platform Fee',    summary.totalPlatformFee != null ? `₦${Number(summary.totalPlatformFee).toLocaleString()}` : '—', '#8492B4'],
         ].map(([l, v, c]: any) => (
           <div key={l} className="p-4 rounded-xl flex items-center gap-3"
             style={{ background: 'rgba(13,27,62,.6)', border: '1px solid rgba(255,255,255,.06)' }}>
@@ -1361,37 +1425,103 @@ function AnalyticsTab({ store, token, loading, toast, reload }: any) {
         ))}
       </div>
 
-      {/* Commission table */}
+      {/* Commission Ledger */}
       <Card>
-        <div className="flex justify-between items-center mb-4">
-          <p className="font-syne font-bold">Commission Ledger</p>
-          <span className="text-muted text-xs">{commissions.length} records</span>
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
+          <div>
+            <p className="font-syne font-bold text-base">Commission Ledger</p>
+            <p className="text-muted text-xs mt-0.5">
+              {statusFilter !== 'all' ? `Showing ${statusFilter}` : 'All records'} — {visible.length} entries
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Filters options={['all', 'pending', 'processing', 'paid']} value={statusFilter} onChange={setStatusFilter} />
+            {selected.size > 0 && (
+              <div className="flex gap-2">
+                <span className="text-xs text-muted py-2">{selected.size} selected</span>
+                {pendingSelected.length > 0 && (
+                  <button onClick={bulkPay} disabled={acting}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50 transition-all hover:brightness-110"
+                    style={{ background: '#2EC97E', color: '#0A0F1E' }}>
+                    {acting ? <Spin /> : `✓ Mark ${pendingSelected.length} as Paid`}
+                  </button>
+                )}
+                <button onClick={() => setSelected(new Set())}
+                  className="px-3 py-1.5 rounded-lg text-xs text-muted font-semibold"
+                  style={{ background: 'rgba(255,255,255,.06)' }}>Clear</button>
+              </div>
+            )}
+          </div>
         </div>
+
         {busy ? (
           <div className="flex justify-center py-10"><Spin /></div>
-        ) : commissions.length === 0 ? (
+        ) : visible.length === 0 ? (
           <Empty icon="💵" title="No commission records" sub="Records appear here as policies are purchased" />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,.07)' }}>
-                  {['Policy', 'Provider', 'Premium', 'Rate', 'Commission', 'Net', 'Status', 'Date'].map(h => (
+                  <th className="pb-3 pr-3 w-8">
+                    <input type="checkbox" checked={selected.size === visible.length && visible.length > 0}
+                      onChange={toggleAll} className="cursor-pointer" />
+                  </th>
+                  {['Policy', 'Provider', 'Premium', 'Rate', 'Commission', 'Platform Fee', 'Net', 'Status', 'Date', 'Actions'].map(h => (
                     <th key={h} className="pb-3 pr-4 text-left text-xs font-semibold uppercase tracking-wider text-muted">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {commissions.map((c: any, i: number) => (
-                  <tr key={c.id || i} className="transition-all hover:bg-white/5" style={{ borderBottom: '1px solid rgba(255,255,255,.04)' }}>
-                    <td className="py-3 pr-4 font-mono text-xs text-muted">{c.policyId?.slice(0, 8)}…</td>
-                    <td className="py-3 pr-4 text-xs">{c.providerId?.slice(0, 8)}…</td>
-                    <td className="py-3 pr-4 text-accent font-semibold">₦{Number(c.grossPremium || 0).toLocaleString()}</td>
-                    <td className="py-3 pr-4 text-muted">{c.commissionRate ? (Number(c.commissionRate) * 100).toFixed(0) + '%' : '—'}</td>
+                {visible.map((c: any) => (
+                  <tr key={c.id} className="transition-all hover:bg-white/5"
+                    style={{ borderBottom: '1px solid rgba(255,255,255,.04)', background: selected.has(c.id) ? 'rgba(26,58,143,.2)' : '' }}>
+                    <td className="py-3 pr-3">
+                      <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggleSelect(c.id)} className="cursor-pointer" />
+                    </td>
+                    <td className="py-3 pr-4">
+                      <div className="font-mono text-xs text-accent">{c.policyNumber || c.policyId?.slice(0, 8) + '…'}</div>
+                    </td>
+                    <td className="py-3 pr-4 text-xs text-white">{c.providerName || c.providerId?.slice(0, 8) + '…' || '—'}</td>
+                    <td className="py-3 pr-4 font-semibold" style={{ color: '#F4A623' }}>₦{Number(c.grossPremium || 0).toLocaleString()}</td>
+                    <td className="py-3 pr-4 text-muted text-xs">{c.commissionRate ? (Number(c.commissionRate) * 100).toFixed(0) + '%' : '—'}</td>
                     <td className="py-3 pr-4 font-bold" style={{ color: '#2EC97E' }}>₦{Number(c.commissionAmount || 0).toLocaleString()}</td>
-                    <td className="py-3 pr-4" style={{ color: '#00C2A8' }}>₦{Number(c.netCommission || 0).toLocaleString()}</td>
+                    <td className="py-3 pr-4 text-xs text-muted">₦{Number(c.platformFee || 0).toLocaleString()}</td>
+                    <td className="py-3 pr-4 font-semibold" style={{ color: '#00C2A8' }}>₦{Number(c.netCommission || 0).toLocaleString()}</td>
                     <td className="py-3 pr-4"><Badge status={c.status || 'pending'} /></td>
-                    <td className="py-3 text-muted text-xs">{c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-NG') : '—'}</td>
+                    <td className="py-3 pr-4 text-muted text-xs whitespace-nowrap">
+                      {c.paidAt
+                        ? <span title={new Date(c.paidAt).toLocaleString('en-NG')}>Paid {new Date(c.paidAt).toLocaleDateString('en-NG')}</span>
+                        : new Date(c.createdAt).toLocaleDateString('en-NG')}
+                    </td>
+                    <td className="py-3">
+                      <div className="flex gap-1.5 flex-wrap">
+                        {c.status === 'pending' && (
+                          <>
+                            <button onClick={() => markOne(c.id, 'processing')} disabled={acting}
+                              className="px-2 py-1 rounded-lg text-xs font-semibold disabled:opacity-40 hover:brightness-110 transition-all"
+                              style={{ background: 'rgba(124,107,255,.15)', color: '#7C6BFF', border: '1px solid rgba(124,107,255,.3)' }}>
+                              Processing
+                            </button>
+                            <button onClick={() => openNoteModal(c.id, 'paid')} disabled={acting}
+                              className="px-2 py-1 rounded-lg text-xs font-semibold disabled:opacity-40 hover:brightness-110 transition-all"
+                              style={{ background: 'rgba(46,201,126,.12)', color: '#2EC97E', border: '1px solid rgba(46,201,126,.3)' }}>
+                              Mark Paid
+                            </button>
+                          </>
+                        )}
+                        {c.status === 'processing' && (
+                          <button onClick={() => openNoteModal(c.id, 'paid')} disabled={acting}
+                            className="px-2 py-1 rounded-lg text-xs font-semibold disabled:opacity-40 hover:brightness-110 transition-all"
+                            style={{ background: 'rgba(46,201,126,.12)', color: '#2EC97E', border: '1px solid rgba(46,201,126,.3)' }}>
+                            Mark Paid
+                          </button>
+                        )}
+                        {c.status === 'paid' && c.notes && (
+                          <span className="text-xs text-muted italic truncate max-w-[120px]" title={c.notes}>{c.notes}</span>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1399,6 +1529,26 @@ function AnalyticsTab({ store, token, loading, toast, reload }: any) {
           </div>
         )}
       </Card>
+
+      {/* Mark Paid modal with optional note */}
+      {noteModal && (
+        <Modal title="Mark as Paid" onClose={() => setNoteModal(null)}>
+          <p className="text-muted text-sm mb-4">Optionally add a payment reference or note (e.g. bank transfer ref).</p>
+          <Field label="Payment Note (optional)" value={note} onChange={(v: string) => setNote(v)}
+            placeholder="e.g. GTB transfer REF-20240315-001" />
+          <div className="flex gap-3 mt-5">
+            <button onClick={() => setNoteModal(null)}
+              className="flex-1 py-2.5 rounded-xl text-sm text-muted font-semibold"
+              style={{ background: 'rgba(255,255,255,.05)' }}>Cancel</button>
+            <button onClick={() => { markOne(noteModal.id, 'paid', note || undefined); setNoteModal(null) }}
+              disabled={acting}
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+              style={{ background: '#2EC97E', color: '#0A0F1E' }}>
+              {acting && <Spin />} Confirm Paid
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

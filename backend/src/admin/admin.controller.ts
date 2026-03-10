@@ -132,10 +132,33 @@ export class AdminController {
   @ApiOperation({ summary: 'Deactivate a product' })
   deactivateProduct(@Param('id') id: string) { return this.adminService.setProductStatus(id, 'inactive'); }
 
-  // ── ANALYTICS ─────────────────────────────────────────────
+  // ── ANALYTICS & COMMISSION LEDGER ─────────────────────────
   @Get('analytics/revenue')
-  @ApiOperation({ summary: 'Revenue analytics' })
-  getRevenue(@Query('startDate') startDate?: string, @Query('endDate') endDate?: string) {
-    return this.adminService.getRevenueAnalytics({ startDate, endDate });
+  @ApiOperation({ summary: 'Revenue analytics + commission ledger' })
+  getRevenue(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('providerId') providerId?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.adminService.getRevenueAnalytics({ startDate, endDate, providerId, status });
+  }
+
+  @Patch('commissions/:id/processing')
+  @ApiOperation({ summary: 'Mark commission as processing' })
+  markCommissionProcessing(@Param('id') id: string) {
+    return this.adminService.markCommissionProcessing(id);
+  }
+
+  @Patch('commissions/:id/paid')
+  @ApiOperation({ summary: 'Mark commission as paid' })
+  markCommissionPaid(@Param('id') id: string, @Body() body: { notes?: string }) {
+    return this.adminService.markCommissionPaid(id, body.notes);
+  }
+
+  @Post('commissions/bulk-paid')
+  @ApiOperation({ summary: 'Bulk mark commissions as paid' })
+  bulkMarkPaid(@Body() body: { ids: string[] }) {
+    return this.adminService.bulkMarkCommissionsPaid(body.ids);
   }
 }

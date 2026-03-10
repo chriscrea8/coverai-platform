@@ -56,8 +56,23 @@ export class ClaimsService {
     try {
       const user = await this.usersService.findById(userId);
       if (user) await this.notificationsService.sendEmail(user, {
-        subject: 'Claim Submitted',
-        message: `Your claim ${claimNumber} is under review.`,
+        subject: `🛡️ Claim Submitted — ${claimNumber}`,
+        message: [
+          `Hello ${user.name},`,
+          '',
+          `Your claim ${claimNumber} has been received and is now under review.`,
+          '',
+          `Claim Amount: ₦${Number(dto.claimAmount).toLocaleString()}`,
+          `Incident Date: ${new Date(dto.incidentDate).toLocaleDateString('en-NG', { dateStyle: 'long' })}`,
+          '',
+          'Our claims team typically reviews submissions within 3–5 business days.',
+          'You will be notified immediately once a decision is made.',
+          '',
+          'Track your claim status at coverai.ng/dashboard',
+        ].join('\n'),
+        entityType: 'claim',
+        entityId: claim.id,
+        metadata: { claimNumber, claimAmount: dto.claimAmount },
       });
     } catch {}
     return claim;
@@ -87,9 +102,37 @@ export class ClaimsService {
     await this.claimRepo.save(claim);
     try {
       const user = await this.usersService.findById(claim.userId);
+      const approvedMsg = dto.approvedAmount
+        ? `\nApproved Amount: ₦${Number(dto.approvedAmount).toLocaleString()}`
+        : '';
+      const noteMsg = dto.reviewerNotes ? `\nReviewer Note: ${dto.reviewerNotes}` : '';
+      const rejectionMsg = dto.rejectionReason ? `\nReason: ${dto.rejectionReason}` : '';
+
       if (user) await this.notificationsService.sendEmail(user, {
-        subject: status === ClaimStatus.APPROVED ? '✅ Claim Approved' : 'Claim Update',
-        message: `Your claim ${claim.claimNumber} has been ${dto.status}.`,
+        subject: status === ClaimStatus.APPROVED ? `✅ Claim Approved — ${claim.claimNumber}` : `❌ Claim Decision — ${claim.claimNumber}`,
+        message: status === ClaimStatus.APPROVED
+          ? [
+              `Hello ${user.name},`,
+              '',
+              `Great news! Your claim ${claim.claimNumber} has been approved.`,
+              approvedMsg,
+              noteMsg,
+              '',
+              'Our payments team will process your payout within 5–7 business days.',
+              'You will receive a separate notification when the payment is initiated.',
+            ].filter(Boolean).join('\n')
+          : [
+              `Hello ${user.name},`,
+              '',
+              `After careful review, your claim ${claim.claimNumber} could not be approved at this time.`,
+              rejectionMsg,
+              noteMsg,
+              '',
+              'If you believe this decision is incorrect, please contact our support team at claims@coverai.ng with your claim number and any additional documentation.',
+            ].filter(Boolean).join('\n'),
+        entityType: 'claim',
+        entityId: claim.id,
+        metadata: { claimNumber: claim.claimNumber, status: dto.status, approvedAmount: dto.approvedAmount },
       });
     } catch {}
     return claim;
