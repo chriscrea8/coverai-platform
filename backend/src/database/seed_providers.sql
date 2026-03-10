@@ -104,5 +104,5 @@ ON CONFLICT (product_code) DO NOTHING;
 SELECT name, slug, status,
        CASE WHEN api_key_encrypted IS NOT NULL THEN '✓ API key set' ELSE '— No API' END AS api_status
 FROM insurance_providers
-WHERE id LIKE 'a1b2c3d4%'
+WHERE id::text LIKE 'a1b2c3d4%'
 ORDER BY name;
