@@ -5,7 +5,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import {
   appConfig, dbConfig, jwtConfig, redisConfig,
-  awsConfig, paystackConfig, openaiConfig, emailConfig, twilioConfig,
+  awsConfig, paystackConfig, openaiConfig, resendConfig, twilioConfig,
 } from './config';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -28,7 +28,7 @@ import { RecommendationsModule } from './recommendations/recommendations.module'
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, dbConfig, jwtConfig, redisConfig, awsConfig, paystackConfig, openaiConfig, emailConfig, twilioConfig],
+      load: [appConfig, dbConfig, jwtConfig, redisConfig, awsConfig, paystackConfig, openaiConfig, resendConfig, twilioConfig],
     }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],

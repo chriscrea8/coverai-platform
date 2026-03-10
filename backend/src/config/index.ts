@@ -54,12 +54,9 @@ export const openaiConfig = registerAs('openai', () => ({
   model: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
 }));
 
-export const emailConfig = registerAs('email', () => ({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT, 10) || 587,
-  user: process.env.SMTP_USER,
-  pass: process.env.SMTP_PASS,
-  from: process.env.EMAIL_FROM || 'CoverAI <noreply@coverai.ng>',
+export const resendConfig = registerAs('resend', () => ({
+  apiKey: process.env.RESEND_API_KEY,
+  from: process.env.RESEND_FROM || 'CoverAI <onboarding@resend.dev>',
 }));
 
 export const twilioConfig = registerAs('twilio', () => ({
