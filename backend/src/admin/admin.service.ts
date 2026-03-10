@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserStatus } from '../users/user.entity';
@@ -11,6 +11,8 @@ import { CommissionsService } from '../commissions/commissions.service';
 
 @Injectable()
 export class AdminService {
+  private readonly logger = new Logger(AdminService.name);
+
   constructor(
     @InjectRepository(User)              private userRepo:     Repository<User>,
     @InjectRepository(Policy)            private policyRepo:   Repository<Policy>,
@@ -147,6 +149,9 @@ export class AdminService {
       email: p.contactEmail,
       phone: p.contactPhone,
       licenseNumber: p.naicomLicense,
+      hasApiKey: !!p.apiKeyEncrypted,
+      // Never expose the actual key
+      apiKeyEncrypted: undefined,
     }));
   }
 
@@ -155,13 +160,16 @@ export class AdminService {
       name: data.name,
       contactEmail: data.email,
       contactPhone: data.phone,
-      address: data.address,
       naicomLicense: data.licenseNumber,
       description: data.description,
-      slug: data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      apiBaseUrl: data.apiBaseUrl || null,
+      apiKeyEncrypted: data.apiKey || null, // stored as-is; swap for real encryption in prod
+      slug: data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now(),
       status: 'active',
+      syncStatus: data.apiKey ? 'idle' : null,
     });
-    return this.providerRepo.save(provider);
+    const saved = await this.providerRepo.save(provider);
+    return { ...saved, hasApiKey: !!saved.apiKeyEncrypted, apiKeyEncrypted: undefined };
   }
 
   async setProviderStatus(id: string, status: string) {
@@ -170,16 +178,122 @@ export class AdminService {
   }
 
   async updateProvider(id: string, data: any) {
-    await this.providerRepo.update(id, {
+    const update: any = {
       name: data.name,
       contactEmail: data.email,
       contactPhone: data.phone,
-      address: data.address,
       naicomLicense: data.licenseNumber,
       description: data.description,
-    });
+      apiBaseUrl: data.apiBaseUrl ?? undefined,
+    };
+    // Only update key if a new one was explicitly provided
+    if (data.apiKey !== undefined && data.apiKey !== '') {
+      update.apiKeyEncrypted = data.apiKey;
+      update.syncStatus = 'idle';
+    }
+    await this.providerRepo.update(id, update);
     return { message: 'Provider updated', id };
   }
+
+  /**
+   * Calls the provider's API and upserts their products into our DB.
+   * Supports two response shapes:
+   *   - Array at root: [ { name, description, category, premium_min, premium_max, ... } ]
+   *   - Wrapped:       { data: [...] } | { products: [...] } | { results: [...] }
+   */
+  async syncProviderProducts(providerId: string) {
+    const provider = await this.providerRepo.findOne({ where: { id: providerId } });
+    if (!provider) throw new NotFoundException('Provider not found');
+    if (!provider.apiKeyEncrypted || !provider.apiBaseUrl) {
+      throw new Error('Provider has no API key or base URL configured');
+    }
+
+    await this.providerRepo.update(providerId, { syncStatus: 'syncing' });
+
+    try {
+      // Normalise base URL
+      const base = provider.apiBaseUrl.replace(/\/$/, '');
+      const url = `${base}/products`;
+
+      this.logger.log(`Syncing products from ${url} for provider ${provider.name}`);
+
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${provider.apiKeyEncrypted}`,
+          'X-API-Key': provider.apiKeyEncrypted,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        signal: AbortSignal.timeout(15000),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Provider API returned ${response.status}: ${await response.text()}`);
+      }
+
+      const raw = await response.json();
+
+      // Normalise to array
+      const items: any[] = Array.isArray(raw)
+        ? raw
+        : raw.data ?? raw.products ?? raw.results ?? raw.items ?? [];
+
+      if (!items.length) throw new Error('Provider API returned no products');
+
+      let created = 0, updated = 0;
+
+      for (const item of items) {
+        // Flexible field mapping — handle different provider naming conventions
+        const productName = item.name || item.product_name || item.productName || item.title;
+        const category    = item.category || item.type || item.product_type || item.productType || 'business';
+        const premiumMin  = Number(item.premium_min ?? item.premiumMin ?? item.min_premium ?? item.minPremium ?? 0) || undefined;
+        const premiumMax  = Number(item.premium_max ?? item.premiumMax ?? item.max_premium ?? item.maxPremium ?? 0) || undefined;
+        const description = item.description || item.desc || `${productName} by ${provider.name}`;
+        const code        = item.code || item.product_code || item.productCode || item.id || `${provider.id.slice(0,8)}-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
+        const commRate    = Number(item.commission_rate ?? item.commissionRate ?? 0.10);
+        const duration    = Number(item.duration_months ?? item.durationMonths ?? 12);
+        const coverage    = item.coverage_details ?? item.coverageDetails ?? item.coverage ?? {};
+
+        if (!productName) continue; // skip malformed entries
+
+        // Upsert by product_code + provider_id
+        const existing = await this.productRepo.findOne({ where: { productCode: String(code), providerId } });
+
+        if (existing) {
+          await this.productRepo.update(existing.id, {
+            productName, description, category,
+            premiumMin, premiumMax, commissionRate: commRate,
+            durationMonths: duration, coverageDetails: coverage,
+          });
+          updated++;
+        } else {
+          await this.productRepo.save(this.productRepo.create({
+            productName, description, category,
+            premiumMin, premiumMax, commissionRate: commRate,
+            durationMonths: duration, coverageDetails: coverage,
+            providerId, productCode: String(code),
+            status: 'active', isSmeProduct: true,
+          }));
+          created++;
+        }
+      }
+
+      await this.providerRepo.update(providerId, {
+        syncStatus: 'success',
+        lastSyncedAt: new Date(),
+        syncedProductCount: created + updated,
+      });
+
+      this.logger.log(`Sync complete for ${provider.name}: ${created} created, ${updated} updated`);
+      return { success: true, created, updated, total: created + updated };
+
+    } catch (err: any) {
+      await this.providerRepo.update(providerId, { syncStatus: 'error' });
+      this.logger.error(`Sync failed for provider ${provider.name}: ${err.message}`);
+      throw new Error(err.message || 'Sync failed');
+    }
+  }
+
 
   // ── PRODUCTS ──────────────────────────────────────────────
   async getProducts() {

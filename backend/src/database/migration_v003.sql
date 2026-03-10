@@ -49,3 +49,8 @@ FROM information_schema.columns
 WHERE table_name = 'policies'
   AND column_name IN ('product_id', 'provider_id')
 ORDER BY column_name;
+
+-- 4. Provider sync tracking columns (safe to re-run)
+ALTER TABLE insurance_providers ADD COLUMN IF NOT EXISTS sync_status VARCHAR(20);
+ALTER TABLE insurance_providers ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMPTZ;
+ALTER TABLE insurance_providers ADD COLUMN IF NOT EXISTS synced_product_count INT DEFAULT 0;

@@ -107,6 +107,10 @@ export class AdminController {
   @ApiOperation({ summary: 'Deactivate a provider' })
   deactivateProvider(@Param('id') id: string) { return this.adminService.setProviderStatus(id, 'inactive'); }
 
+  @Post('providers/:id/sync')
+  @ApiOperation({ summary: 'Sync products from provider API' })
+  syncProviderProducts(@Param('id') id: string) { return this.adminService.syncProviderProducts(id); }
+
   // ── PRODUCTS ──────────────────────────────────────────────
   @Get('products')
   @ApiOperation({ summary: 'List all insurance products' })

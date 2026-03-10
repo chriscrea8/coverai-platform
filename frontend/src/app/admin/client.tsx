@@ -577,12 +577,13 @@ function ClaimsTab({ store, token, loading, toast, reload }: any) {
 // ─── PROVIDERS ─────────────────────────────────────────────────────────────
 function ProvidersTab({ store, token, loading, toast, reload }: any) {
   const providers: any[] = store.providers || []
-  const blank = { name: '', email: '', phone: '', address: '', licenseNumber: '', description: '' }
+  const blank = { name: '', email: '', phone: '', address: '', licenseNumber: '', description: '', apiBaseUrl: '', apiKey: '' }
   const [form, setForm] = useState(blank)
   const [editing, setEditing] = useState<any>(null) // null=closed, false=new, obj=edit
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
+  const [syncing, setSyncing] = useState<string | null>(null) // provider id being synced
   const f = (k: string) => (v: string) => setForm(p => ({ ...p, [k]: v }))
 
   const visible = providers
@@ -591,7 +592,7 @@ function ProvidersTab({ store, token, loading, toast, reload }: any) {
 
   function openNew() { setForm(blank); setEditing(false) }
   function openEdit(p: any) {
-    setForm({ name: p.name, email: p.email || p.contactEmail || '', phone: p.phone || p.contactPhone || '', address: p.address || '', licenseNumber: p.licenseNumber || p.naicomLicense || '', description: p.description || '' })
+    setForm({ name: p.name, email: p.email || p.contactEmail || '', phone: p.phone || p.contactPhone || '', address: p.address || '', licenseNumber: p.licenseNumber || p.naicomLicense || '', description: p.description || '', apiBaseUrl: p.apiBaseUrl || '', apiKey: '' })
     setEditing(p)
   }
 
@@ -619,6 +620,36 @@ function ProvidersTab({ store, token, loading, toast, reload }: any) {
       toast(`Provider ${action}d`)
       reload('providers', '/admin/providers')
     } catch (e: any) { toast(e.message, false) }
+  }
+
+  async function syncProducts(p: any) {
+    setSyncing(p.id)
+    try {
+      const res = await req(token, 'POST', `/admin/providers/${p.id}/sync`, {})
+      toast(`✅ Synced ${res.total} products (${res.created} new, ${res.updated} updated)`)
+      reload('providers', '/admin/providers')
+      reload('products', '/admin/products')
+    } catch (e: any) {
+      toast(`Sync failed: ${e.message}`, false)
+    }
+    setSyncing(null)
+  }
+
+  function SyncBadge({ p }: { p: any }) {
+    if (!p.hasApiKey) return null
+    const s = p.syncStatus
+    const configs: Record<string, { color: string, bg: string, label: string }> = {
+      success: { color: '#00C2A8', bg: 'rgba(0,194,168,.1)', label: `✓ ${p.syncedProductCount || 0} products` },
+      error:   { color: '#F56565', bg: 'rgba(245,101,101,.1)', label: '✗ Sync failed' },
+      syncing: { color: '#F4A623', bg: 'rgba(244,166,35,.1)', label: '⟳ Syncing…' },
+      idle:    { color: '#94A3B8', bg: 'rgba(148,163,184,.1)', label: 'API ready' },
+    }
+    const cfg = configs[s] || configs.idle
+    return (
+      <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ color: cfg.color, background: cfg.bg }}>
+        {cfg.label}
+      </span>
+    )
   }
 
   return (
@@ -650,16 +681,27 @@ function ProvidersTab({ store, token, loading, toast, reload }: any) {
                     <div className="flex items-center gap-2 flex-wrap mb-2">
                       <span className="font-syne font-bold">{p.name}</span>
                       <Badge status={p.status || 'active'} />
+                      <SyncBadge p={p} />
                     </div>
                     <div className="text-xs text-muted space-y-1">
                       <div>📧 {p.email || p.contactEmail || '—'}</div>
                       {(p.phone || p.contactPhone) && <div>📞 {p.phone || p.contactPhone}</div>}
                       {(p.licenseNumber || p.naicomLicense) && <div>🪪 {p.licenseNumber || p.naicomLicense}</div>}
                       {p.address && <div>📍 {p.address}</div>}
+                      {p.apiBaseUrl && <div>🔗 <span className="font-mono opacity-70">{p.apiBaseUrl}</span></div>}
+                      {p.lastSyncedAt && <div className="opacity-60">Last sync: {new Date(p.lastSyncedAt).toLocaleString()}</div>}
                       {p.description && <div className="mt-1 opacity-70 line-clamp-2">{p.description}</div>}
                     </div>
                   </div>
-                  <div className="flex gap-2 items-start shrink-0">
+                  <div className="flex gap-2 items-start shrink-0 flex-wrap justify-end">
+                    {p.hasApiKey && (
+                      <ActionBtn
+                        label={syncing === p.id ? '⟳ Syncing…' : '⟳ Sync Products'}
+                        color="ghost"
+                        onClick={() => syncProducts(p)}
+                        disabled={syncing === p.id}
+                      />
+                    )}
                     <ActionBtn label="Edit" color="ghost" onClick={() => openEdit(p)} />
                     <ActionBtn
                       label={p.status === 'active' ? 'Deactivate' : 'Activate'}
@@ -681,6 +723,33 @@ function ProvidersTab({ store, token, loading, toast, reload }: any) {
             <Field label="NAICOM License" value={form.licenseNumber} onChange={f('licenseNumber')} placeholder="NAICOM/INS/2024/001" />
             <Field label="Head Office Address" value={form.address} onChange={f('address')} placeholder="123 Marina Street, Lagos" />
             <Field label="Description" value={form.description} onChange={f('description')} textarea placeholder="Brief overview of this company's specialisation…" />
+
+            {/* API Integration section */}
+            <div className="pt-2 pb-1">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,.08)' }} />
+                <span className="text-xs text-muted font-semibold uppercase tracking-wider px-2">API Integration</span>
+                <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,.08)' }} />
+              </div>
+              <p className="text-xs text-muted mb-3 opacity-70">Optional — if this provider has an API, CoverAI can automatically pull their products.</p>
+              <div className="space-y-3">
+                <Field
+                  label="API Base URL"
+                  value={form.apiBaseUrl}
+                  onChange={f('apiBaseUrl')}
+                  placeholder="https://api.leadway.com/v1"
+                  hint="Products will be fetched from {baseUrl}/products"
+                />
+                <Field
+                  label={editing && editing.hasApiKey ? 'API Key (leave blank to keep existing)' : 'API Key'}
+                  value={form.apiKey}
+                  onChange={f('apiKey')}
+                  type="password"
+                  placeholder={editing && editing.hasApiKey ? '••••••••••••••••' : 'Enter provider API key'}
+                  hint="Stored securely. Used in Authorization: Bearer header."
+                />
+              </div>
+            </div>
           </div>
           <div className="flex gap-3 mt-5">
             <button onClick={() => setEditing(null)} className="flex-1 py-2.5 rounded-xl text-sm text-muted font-semibold" style={{ background: 'rgba(255,255,255,.05)' }}>Cancel</button>
