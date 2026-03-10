@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { User } from '../users/user.entity';
 
 export enum PolicyStatus { ACTIVE = 'active', EXPIRED = 'expired', CANCELLED = 'cancelled', PENDING = 'pending', LAPSED = 'lapsed' }
 
@@ -7,6 +8,9 @@ export class Policy {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ name: 'policy_number', unique: true }) policyNumber: string;
   @Column({ name: 'user_id' }) userId: string;
+  @ManyToOne(() => User, { nullable: true, eager: false })
+  @JoinColumn({ name: 'user_id' })
+  user: User;
   @Column({ name: 'sme_id', nullable: true }) smeId: string;
   @Column({ name: 'product_id', nullable: true }) productId: string;
   @Column({ name: 'provider_id', nullable: true }) providerId: string;
