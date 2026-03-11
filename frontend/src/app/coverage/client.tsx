@@ -169,8 +169,9 @@ export default function CoveragePage() {
         },
       }
       // Only include IDs if they are real UUIDs (not null/placeholder)
-      if (plan.id && plan.id !== 'null') policyBody.productId = plan.id
-      if (plan.providerId) policyBody.providerId = plan.providerId
+      const isUUID = (v: any) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
+      if (isUUID(plan.id)) policyBody.productId = plan.id
+      if (isUUID(plan.providerId)) policyBody.providerId = plan.providerId
       if (plan.coverageAmount) policyBody.coverageAmount = plan.coverageAmount
 
       // Step 1: Create the policy
