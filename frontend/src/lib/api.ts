@@ -37,7 +37,7 @@ api.interceptors.response.use(
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
         localStorage.removeItem('user')
-        if (typeof window !== 'undefined') window.location.href = '/auth'
+        if (typeof window !== 'undefined') window.location.href = '/auth?reason=expired'
       }
     }
     return Promise.reject(error)

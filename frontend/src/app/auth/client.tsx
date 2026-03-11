@@ -26,6 +26,7 @@ function AuthForm() {
   const router = useRouter()
   const params = useSearchParams()
   const [mode, setMode] = useState<'login' | 'register'>(params.get('mode') === 'register' ? 'register' : 'login')
+  const reason = params.get('reason') // 'idle' | 'expired'
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', role: 'consumer' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -197,6 +198,19 @@ function AuthForm() {
             {mode === 'login' ? 'Welcome back to CoverAI' : 'Start protecting what matters most'}
           </p>
         </div>
+
+        {/* Session expired / idle banner */}
+        {reason && (
+          <div className="mb-4 p-3 rounded-xl flex items-center gap-2.5 text-sm"
+            style={{ background: 'rgba(244,166,35,.08)', border: '1px solid rgba(244,166,35,.25)' }}>
+            <span>⏱</span>
+            <p style={{ color: '#F4A623' }}>
+              {reason === 'idle'
+                ? 'You were signed out due to inactivity. Please sign in again.'
+                : 'Your session has expired. Please sign in again.'}
+            </p>
+          </div>
+        )}
 
         <div className="p-5 md:p-8 rounded-2xl" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.08)' }}>
           {/* Mode tabs */}

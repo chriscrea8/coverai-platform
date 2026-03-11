@@ -149,7 +149,7 @@ function DashboardInner() {
 
   const logout = () => {
     clearAuth()
-    router.push('/')
+    router.push('/auth')
   }
 
   // ── Idle session management ────────────────────────────────
