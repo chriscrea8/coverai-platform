@@ -23,6 +23,7 @@ import { AdminModule } from './admin/admin.module';
 import { FilesModule } from './files/files.module';
 import { HealthModule } from './health/health.module';
 import { RecommendationsModule } from './recommendations/recommendations.module';
+import { DatabaseModule } from './database/database.module';
 
 @Module({
   imports: [
@@ -85,6 +86,7 @@ import { RecommendationsModule } from './recommendations/recommendations.module'
     AdminModule,
     FilesModule,
     RecommendationsModule,
+    DatabaseModule,
   ],
 })
 export class AppModule {}
