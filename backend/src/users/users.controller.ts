@@ -2,7 +2,7 @@ import { Controller, Get, Patch, Post, Body, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UsersService } from './users.service';
-import { UpdateProfileDto, ChangePasswordDto, SubmitKycDto } from './users.dto';
+import { UpdateProfileDto, ChangePasswordDto, SubmitKycDto, SaveBankDetailsDto } from './users.dto';
 import { CurrentUser } from '../common/decorators';
 
 @ApiTags('Users')
@@ -30,5 +30,10 @@ export class UsersController {
   @Post('kyc') @ApiOperation({ summary: 'Submit KYC verification' })
   submitKyc(@CurrentUser('id') userId: string, @Body() dto: SubmitKycDto) {
     return this.usersService.submitKyc(userId, dto);
+  }
+
+  @Patch('bank-details') @ApiOperation({ summary: 'Save payout bank details' })
+  saveBankDetails(@CurrentUser('id') userId: string, @Body() dto: SaveBankDetailsDto) {
+    return this.usersService.saveBankDetails(userId, dto);
   }
 }

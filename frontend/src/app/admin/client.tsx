@@ -598,14 +598,35 @@ function ClaimsTab({ store, token, loading, toast, reload }: any) {
           {selected.status === 'approved' && (
             <div className="mt-4 p-4 rounded-xl" style={{ background: 'rgba(46,201,126,.07)', border: '1px solid rgba(46,201,126,.2)' }}>
               <p className="text-sm font-semibold mb-1" style={{ color: '#2EC97E' }}>✅ Claim Approved — Payout Pending</p>
+
+              {/* Bank details */}
+              {selected.user?.bankName ? (
+                <div className="my-3 p-3 rounded-xl" style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.08)' }}>
+                  <p className="text-xs text-muted uppercase tracking-wider font-semibold mb-2">Customer Bank Account</p>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs"><span className="text-muted">Bank</span><span className="text-white font-semibold">{selected.user.bankName}</span></div>
+                    <div className="flex justify-between text-xs"><span className="text-muted">Account No.</span><span className="text-white font-mono">{selected.user.bankAccountNumber}</span></div>
+                    <div className="flex justify-between text-xs"><span className="text-muted">Account Name</span><span className="text-white">{selected.user.bankAccountName}</span></div>
+                  </div>
+                </div>
+              ) : (
+                <div className="my-3 p-3 rounded-xl flex items-center gap-2" style={{ background: 'rgba(232,69,69,.1)', border: '1px solid rgba(232,69,69,.2)' }}>
+                  <span>⚠️</span>
+                  <p className="text-xs text-red-400">Customer has not added bank details. Contact them at <strong>{selected.user?.email}</strong> to provide their account information before processing the payout.</p>
+                </div>
+              )}
+
               <p className="text-xs text-muted mb-3">Once you have processed the bank transfer, mark it as paid to notify the customer.</p>
               <Field label="Payment Reference (optional)" value={note} onChange={setNote}
                 placeholder="e.g. GTB transfer REF-20240315-001" />
-              <button onClick={() => act(selected.id, 'paid')} disabled={!!busy}
+              <button onClick={() => act(selected.id, 'paid')} disabled={!!busy || !selected.user?.bankName}
                 className="w-full mt-3 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:brightness-110"
                 style={{ background: '#2EC97E', color: '#0A0F1E' }}>
                 {busy === 'paid' && <Spin />} 💰 Mark Payout as Sent
               </button>
+              {!selected.user?.bankName && (
+                <p className="text-xs text-center mt-2 text-muted">Button disabled until customer adds bank details</p>
+              )}
             </div>
           )}
         </Modal>

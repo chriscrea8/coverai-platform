@@ -19,12 +19,13 @@ async function apiFetch(token: string, method: string, path: string, body?: any)
   return res.data
 }
 
-type Tab = 'profile' | 'security' | 'kyc' | 'notifications' | 'privacy'
+type Tab = 'profile' | 'security' | 'kyc' | 'notifications' | 'payout' | 'privacy'
 
 const TABS: { id: Tab; icon: string; label: string }[] = [
   { id: 'profile',      icon: '👤', label: 'Profile'       },
   { id: 'security',     icon: '🔐', label: 'Security'      },
   { id: 'kyc',          icon: '🪪', label: 'Verification'  },
+  { id: 'payout',       icon: '🏦', label: 'Payout'        },
   { id: 'notifications', icon: '🔔', label: 'Notifications' },
   { id: 'privacy',      icon: '🛡️', label: 'Privacy'       },
 ]
@@ -230,6 +231,7 @@ export default function SettingsClient() {
           {tab === 'profile' && <ProfileTab profile={profile} update={update} token={token} showToast={showToast} setSaving={setSaving} saving={saving} setProfile={setProfile} />}
           {tab === 'security' && <SecurityTab profile={profile} token={token} showToast={showToast} setProfile={setProfile} />}
           {tab === 'kyc' && <KycTab profile={profile} token={token} showToast={showToast} setProfile={setProfile} />}
+          {tab === 'payout' && <PayoutTab profile={profile} token={token} showToast={showToast} setProfile={setProfile} />}
           {tab === 'notifications' && <NotificationsTab profile={profile} token={token} showToast={showToast} />}
           {tab === 'privacy' && <PrivacyTab profile={profile} />}
         </main>
@@ -638,6 +640,205 @@ function NotificationsTab({ profile, token, showToast }: any) {
 
       <div className="flex justify-end">
         <SaveBtn onClick={save} loading={saving} />
+      </div>
+    </div>
+  )
+}
+
+// ─── PAYOUT TAB ─────────────────────────────────────────────────────────────
+const NIGERIAN_BANKS = [
+  { code: '044', name: 'Access Bank' },
+  { code: '023', name: 'Citibank Nigeria' },
+  { code: '050', name: 'EcoBank Nigeria' },
+  { code: '070', name: 'Fidelity Bank' },
+  { code: '011', name: 'First Bank of Nigeria' },
+  { code: '214', name: 'First City Monument Bank (FCMB)' },
+  { code: '058', name: 'Guaranty Trust Bank (GTB)' },
+  { code: '030', name: 'Heritage Bank' },
+  { code: '301', name: 'Jaiz Bank' },
+  { code: '082', name: 'Keystone Bank' },
+  { code: '526', name: 'Kuda Bank' },
+  { code: '076', name: 'Polaris Bank' },
+  { code: '101', name: 'Providus Bank' },
+  { code: '221', name: 'Stanbic IBTC Bank' },
+  { code: '068', name: 'Standard Chartered Bank' },
+  { code: '232', name: 'Sterling Bank' },
+  { code: '100', name: 'Suntrust Bank' },
+  { code: '032', name: 'Union Bank of Nigeria' },
+  { code: '033', name: 'United Bank for Africa (UBA)' },
+  { code: '215', name: 'Unity Bank' },
+  { code: '035', name: 'Wema Bank' },
+  { code: '057', name: 'Zenith Bank' },
+  { code: '565', name: 'Carbon (OneCredit)' },
+  { code: '090110', name: 'VFD Microfinance Bank' },
+  { code: '090267', name: 'Kuda Microfinance Bank' },
+  { code: '000026', name: 'Taj Bank' },
+  { code: '000036', name: 'Optimus Bank' },
+]
+
+function PayoutTab({ profile, token, showToast, setProfile }: any) {
+  const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'
+  const hasBankDetails = !!(profile.bankName && profile.bankAccountNumber)
+
+  const [form, setForm] = useState({
+    bankName: profile.bankName || '',
+    bankCode: profile.bankCode || '',
+    bankAccountNumber: profile.bankAccountNumber || '',
+    bankAccountName: profile.bankAccountName || '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [editing, setEditing] = useState(!hasBankDetails)
+  const set = (k: string) => (v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  const selectBank = (code: string) => {
+    const bank = NIGERIAN_BANKS.find(b => b.code === code)
+    if (bank) setForm(f => ({ ...f, bankCode: bank.code, bankName: bank.name }))
+  }
+
+  async function save() {
+    if (!form.bankName || !form.bankAccountNumber || !form.bankAccountName) {
+      showToast('Please fill in all required fields', false); return
+    }
+    if (!/^\d{10}$/.test(form.bankAccountNumber)) {
+      showToast('Account number must be exactly 10 digits', false); return
+    }
+    setSaving(true)
+    try {
+      const res = await fetch(`${API}/users/bank-details`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.message || 'Failed to save bank details')
+      setProfile((p: any) => ({ ...p, ...form, bankAccountNumberMasked: '••••••' + form.bankAccountNumber.slice(-4) }))
+      showToast('Bank details saved successfully')
+      setEditing(false)
+    } catch (e: any) { showToast(e.message, false) }
+    setSaving(false)
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="font-syne font-black text-xl mb-1">Payout Details</h2>
+        <p className="text-muted text-sm">Your bank account for claim payouts and refunds. This information is kept private and only used by our payments team.</p>
+      </div>
+
+      {/* Current status card */}
+      <div className="p-4 rounded-2xl flex items-start gap-4"
+        style={{ background: hasBankDetails ? 'rgba(46,201,126,.07)' : 'rgba(244,166,35,.07)', border: `1px solid ${hasBankDetails ? 'rgba(46,201,126,.2)' : 'rgba(244,166,35,.2)'}` }}>
+        <span className="text-2xl">{hasBankDetails ? '✅' : '⚠️'}</span>
+        <div className="flex-1">
+          <p className="font-semibold text-sm" style={{ color: hasBankDetails ? '#2EC97E' : '#F4A623' }}>
+            {hasBankDetails ? 'Bank account on file' : 'No bank details saved'}
+          </p>
+          {hasBankDetails ? (
+            <div className="mt-1 space-y-0.5">
+              <p className="text-xs text-muted">{profile.bankName}</p>
+              <p className="text-xs text-white font-mono">{profile.bankAccountNumberMasked || ('••••••' + (profile.bankAccountNumber || '').slice(-4))}</p>
+              <p className="text-xs text-muted">{profile.bankAccountName}</p>
+            </div>
+          ) : (
+            <p className="text-xs text-muted mt-0.5">Add your bank details so we can process claim payouts without delay.</p>
+          )}
+        </div>
+        {hasBankDetails && !editing && (
+          <button onClick={() => setEditing(true)}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:brightness-110 shrink-0"
+            style={{ background: 'rgba(255,255,255,.08)', color: '#8492B4' }}>
+            Update
+          </button>
+        )}
+      </div>
+
+      {/* Edit form */}
+      {editing && (
+        <div className="p-5 rounded-2xl space-y-4" style={{ background: 'rgba(13,27,62,.6)', border: '1px solid rgba(255,255,255,.08)' }}>
+          <p className="font-semibold text-sm">Bank Account Details</p>
+
+          {/* Bank selector */}
+          <div>
+            <label className="text-xs font-semibold text-muted uppercase tracking-wider block mb-1.5">Bank *</label>
+            <select
+              value={form.bankCode}
+              onChange={e => selectBank(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none"
+              style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)' }}>
+              <option value="">Select your bank…</option>
+              {NIGERIAN_BANKS.map(b => (
+                <option key={b.code} value={b.code}>{b.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Account number */}
+          <div>
+            <label className="text-xs font-semibold text-muted uppercase tracking-wider block mb-1.5">Account Number * <span className="normal-case font-normal">(10 digits)</span></label>
+            <input
+              type="text" inputMode="numeric" maxLength={10}
+              value={form.bankAccountNumber}
+              onChange={e => set('bankAccountNumber')(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              placeholder="0123456789"
+              className="w-full px-4 py-3 rounded-xl text-sm text-white font-mono outline-none"
+              style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)', letterSpacing: '0.1em' }} />
+            <p className="text-xs text-muted mt-1">{form.bankAccountNumber.length}/10 digits</p>
+          </div>
+
+          {/* Account name */}
+          <div>
+            <label className="text-xs font-semibold text-muted uppercase tracking-wider block mb-1.5">Account Name * <span className="normal-case font-normal">(as on your bank records)</span></label>
+            <input
+              type="text"
+              value={form.bankAccountName}
+              onChange={e => set('bankAccountName')(e.target.value)}
+              placeholder="e.g. ADEWALE JOHN BABATUNDE"
+              className="w-full px-4 py-3 rounded-xl text-sm text-white uppercase outline-none"
+              style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.1)' }} />
+            <p className="text-xs text-muted mt-1">Enter name exactly as it appears on your account.</p>
+          </div>
+
+          <div className="p-3 rounded-xl flex gap-3 items-start" style={{ background: 'rgba(26,58,143,.2)', border: '1px solid rgba(26,58,143,.3)' }}>
+            <span className="text-base shrink-0">🔒</span>
+            <p className="text-xs text-muted leading-relaxed">Your bank details are encrypted and stored securely. They are only used to process claim payouts and will never be shared with third parties.</p>
+          </div>
+
+          <div className="flex gap-3 pt-1">
+            {hasBankDetails && (
+              <button onClick={() => setEditing(false)}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold text-muted transition-all"
+                style={{ background: 'rgba(255,255,255,.05)' }}>
+                Cancel
+              </button>
+            )}
+            <button onClick={save} disabled={saving}
+              className="flex-1 py-3 rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2 transition-all hover:brightness-110"
+              style={{ background: '#F4A623', color: '#0A0F1E' }}>
+              {saving ? '…' : '💾 Save Bank Details'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Info box */}
+      <div className="p-4 rounded-2xl space-y-3" style={{ background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.06)' }}>
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted">How payouts work</p>
+        <div className="space-y-2">
+          {[
+            ['1', 'Submit a claim', 'File your claim with supporting evidence through your dashboard.'],
+            ['2', 'Review & approval', 'Our team reviews your claim within 3–5 business days.'],
+            ['3', 'Payout processing', 'Approved payouts are sent directly to your registered bank account within 5–7 business days.'],
+          ].map(([n, title, desc]) => (
+            <div key={n} className="flex gap-3 items-start">
+              <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5"
+                style={{ background: 'rgba(244,166,35,.15)', color: '#F4A623' }}>{n}</span>
+              <div>
+                <p className="text-sm font-semibold">{title}</p>
+                <p className="text-xs text-muted">{desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

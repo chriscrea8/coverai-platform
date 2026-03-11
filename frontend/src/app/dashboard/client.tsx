@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { policiesApi, claimsApi, paymentsApi } from '@/lib/api'
@@ -8,6 +8,9 @@ import { Suspense } from 'react'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'
 
+// Idle timeout: show warning after 20 min of no activity, sign out after 60s
+const IDLE_TIMEOUT_MS = 20 * 60 * 1000
+const COUNTDOWN_SECONDS = 60
 async function apiFetch(token: string, path: string) {
   const res = await fetch(`${API}${path}`, { headers: { Authorization: `Bearer ${token}` } })
   const data = await res.json().catch(() => ({}))
@@ -52,6 +55,12 @@ function DashboardInner() {
   const [loading, setLoading]   = useState(true)
   const [highlightPolicy, setHighlightPolicy] = useState(false)
   const [dismissedVerification, setDismissedVerification] = useState(false)
+
+  // ── Session idle timeout ───────────────────────────────────
+  const [idleWarning, setIdleWarning] = useState(false)
+  const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS)
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // ── Notifications ─────────────────────────────────────────
   const [notifications, setNotifications] = useState<any[]>([])
@@ -143,6 +152,42 @@ function DashboardInner() {
     router.push('/')
   }
 
+  // ── Idle session management ────────────────────────────────
+  const resetIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+    if (countdownTimerRef.current) clearInterval(countdownTimerRef.current)
+    setIdleWarning(false)
+    setCountdown(COUNTDOWN_SECONDS)
+    idleTimerRef.current = setTimeout(() => {
+      setIdleWarning(true)
+      setCountdown(COUNTDOWN_SECONDS)
+      let remaining = COUNTDOWN_SECONDS
+      countdownTimerRef.current = setInterval(() => {
+        remaining -= 1
+        setCountdown(remaining)
+        if (remaining <= 0) {
+          clearInterval(countdownTimerRef.current!)
+          clearAuth()
+          router.push('/auth?reason=idle')
+        }
+      }, 1000)
+    }, IDLE_TIMEOUT_MS)
+  }, [clearAuth, router])
+
+  const stayActive = () => resetIdleTimer()
+
+  useEffect(() => {
+    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click']
+    const handler = () => { if (!idleWarning) resetIdleTimer() }
+    events.forEach(e => window.addEventListener(e, handler, { passive: true }))
+    resetIdleTimer()
+    return () => {
+      events.forEach(e => window.removeEventListener(e, handler))
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current)
+    }
+  }, [idleWarning, resetIdleTimer])
+
   const navigate = (id: string) => { setActive(id); setMenuOpen(false) }
 
   const kpis = [
@@ -157,7 +202,53 @@ function DashboardInner() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#080D1A' }}>
 
-      {/* ── Mobile top bar ── */}
+      {/* ── Idle Session Warning Modal ── */}
+      {idleWarning && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,.75)', backdropFilter: 'blur(6px)' }}>
+          <div className="w-full max-w-sm rounded-2xl p-8 text-center shadow-2xl"
+            style={{ background: 'rgba(10,18,40,.98)', border: '1px solid rgba(255,255,255,.12)' }}>
+            {/* Countdown ring */}
+            <div className="relative w-24 h-24 mx-auto mb-6">
+              <svg className="w-24 h-24 -rotate-90" viewBox="0 0 96 96">
+                <circle cx="48" cy="48" r="42" fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="6" />
+                <circle cx="48" cy="48" r="42" fill="none"
+                  stroke={countdown <= 10 ? '#E84545' : '#F4A623'}
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                  strokeDasharray={`${2 * Math.PI * 42}`}
+                  strokeDashoffset={`${2 * Math.PI * 42 * (1 - countdown / COUNTDOWN_SECONDS)}`}
+                  style={{ transition: 'stroke-dashoffset 1s linear, stroke 0.3s' }} />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="font-syne font-black text-2xl" style={{ color: countdown <= 10 ? '#E84545' : '#F4A623' }}>
+                  {countdown}
+                </span>
+                <span className="text-xs text-muted">sec</span>
+              </div>
+            </div>
+
+            <h2 className="font-syne font-black text-xl mb-2">Are you still there?</h2>
+            <p className="text-muted text-sm mb-6 leading-relaxed">
+              You've been inactive for a while. For your security, you'll be signed out in <span style={{ color: countdown <= 10 ? '#E84545' : '#F4A623' }} className="font-bold">{countdown} second{countdown !== 1 ? 's' : ''}</span> unless you continue.
+            </p>
+
+            <div className="flex gap-3">
+              <button onClick={() => { logout() }}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold text-muted transition-all hover:text-red-400"
+                style={{ background: 'rgba(255,255,255,.05)' }}>
+                Sign Out
+              </button>
+              <button onClick={stayActive}
+                className="flex-1 py-3 rounded-xl text-sm font-bold transition-all hover:brightness-110"
+                style={{ background: '#F4A623', color: '#0A0F1E' }}>
+                Yes, I'm here →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
       <header className="flex items-center justify-between px-4 py-3 md:hidden sticky top-0 z-40"
         style={{ background: 'rgba(13,27,62,.97)', borderBottom: '1px solid rgba(255,255,255,.07)' }}>
         <Link href="/" className="font-syne font-black text-lg">Cover<span className="text-accent">AI</span></Link>

@@ -46,6 +46,16 @@ export class UsersService {
     return { message: 'Password updated successfully' };
   }
 
+  async saveBankDetails(userId: string, dto: { bankName: string; bankAccountNumber: string; bankAccountName: string; bankCode?: string }) {
+    await this.userRepo.update(userId, {
+      bankName: dto.bankName,
+      bankAccountNumber: dto.bankAccountNumber,
+      bankAccountName: dto.bankAccountName,
+      bankCode: dto.bankCode || null,
+    });
+    return { message: 'Bank details saved successfully' };
+  }
+
   async findById(id: string): Promise<User> {
     return this.userRepo.findOne({ where: { id } });
   }
@@ -69,6 +79,10 @@ export class UsersService {
 
   private sanitize(user: User) {
     const { passwordHash, refreshTokenHash, passwordResetToken, emailVerificationOtp, emailOtpExpires, ...safe } = user as any;
+    // Mask account number for display: show only last 4 digits
+    if (safe.bankAccountNumber) {
+      safe.bankAccountNumberMasked = '••••••' + safe.bankAccountNumber.slice(-4);
+    }
     return safe;
   }
 }

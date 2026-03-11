@@ -88,3 +88,9 @@ ALTER TABLE notifications ADD COLUMN IF NOT EXISTS entity_id UUID;
 
 -- Verify notifications table
 SELECT COUNT(*) AS notification_count FROM notifications;
+
+-- 8. Bank payout details on users
+ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_name VARCHAR(100);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account_number VARCHAR(20);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account_name VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_code VARCHAR(10);

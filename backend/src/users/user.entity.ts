@@ -47,6 +47,11 @@ export class User {
   @Column({ name: 'kyc_selfie_url', nullable: true }) kycSelfieUrl: string;
   @Column({ name: 'kyc_submitted_at', nullable: true, type: 'timestamptz' }) kycSubmittedAt: Date;
   @Column({ name: 'kyc_verified_at', nullable: true, type: 'timestamptz' }) kycVerifiedAt: Date;
+  // Payout bank details
+  @Column({ name: 'bank_name', nullable: true }) bankName: string;
+  @Column({ name: 'bank_account_number', nullable: true }) bankAccountNumber: string;
+  @Column({ name: 'bank_account_name', nullable: true }) bankAccountName: string;
+  @Column({ name: 'bank_code', nullable: true }) bankCode: string;
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' }) createdAt: Date;
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' }) updatedAt: Date;
 }

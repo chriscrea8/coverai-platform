@@ -22,6 +22,13 @@ export class SubmitKycDto {
   @ApiPropertyOptional() @IsOptional() @IsString() selfieUrl?: string;
 }
 
+export class SaveBankDetailsDto {
+  @ApiProperty() @IsString() bankName: string;
+  @ApiProperty() @IsString() @Matches(/^\d{10}$/, { message: 'Account number must be 10 digits' }) bankAccountNumber: string;
+  @ApiProperty() @IsString() bankAccountName: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() bankCode?: string;
+}
+
 export class ChangePasswordDto {
   @ApiProperty() @IsString() currentPassword: string;
   @ApiProperty() @IsString() @MinLength(8)

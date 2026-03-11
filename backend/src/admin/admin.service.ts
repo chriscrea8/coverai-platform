@@ -110,7 +110,13 @@ export class AdminService {
     const claims = await qb.getMany();
     return claims.map(c => ({
       ...c,
-      user: c.user ? { id: c.user.id, name: c.user.name, email: c.user.email } : null,
+      user: c.user ? {
+        id: c.user.id, name: c.user.name, email: c.user.email,
+        bankName: (c.user as any).bankName || null,
+        bankAccountName: (c.user as any).bankAccountName || null,
+        bankAccountNumber: (c.user as any).bankAccountNumber
+          ? '••••••' + (c.user as any).bankAccountNumber.slice(-4) : null,
+      } : null,
     }));
   }
 
