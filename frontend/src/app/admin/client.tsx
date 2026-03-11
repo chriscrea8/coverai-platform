@@ -535,20 +535,46 @@ function ClaimsTab({ store, token, loading, toast, reload }: any) {
             <p className="text-sm leading-relaxed">{selected.description}</p>
           </div>
 
-          {selected.evidenceFiles?.length > 0 && (
-            <div className="mb-4">
-              <div className="text-muted text-xs mb-2">Evidence Files ({selected.evidenceFiles.length})</div>
-              <div className="flex gap-2 flex-wrap">
-                {selected.evidenceFiles.map((f: string, i: number) => (
-                  <a key={i} href={f} target="_blank" rel="noopener noreferrer"
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold"
-                    style={{ background: 'rgba(59,130,246,.1)', color: '#60a5fa', border: '1px solid rgba(59,130,246,.2)' }}>
-                    📎 File {i + 1}
-                  </a>
-                ))}
+          {selected.evidenceFiles?.length > 0 && (() => {
+            const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp|bmp)(\?|$)/i.test(url)
+            const imgs = selected.evidenceFiles.filter(isImage)
+            const docs = selected.evidenceFiles.filter((f: string) => !isImage(f))
+            return (
+              <div className="mb-4">
+                <div className="text-muted text-xs mb-2 uppercase tracking-wider font-semibold">
+                  Evidence Files ({selected.evidenceFiles.length})
+                </div>
+                {imgs.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    {imgs.map((f: string, i: number) => (
+                      <a key={i} href={f} target="_blank" rel="noopener noreferrer"
+                        className="relative rounded-xl overflow-hidden border group"
+                        style={{ border: '1px solid rgba(255,255,255,.1)', aspectRatio: '1' }}>
+                        <img src={f} alt={`Evidence ${i + 1}`}
+                          className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                          onError={e => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23111" width="100" height="100"/><text y="55" x="50" text-anchor="middle" fill="%23555" font-size="30">🖼</text></svg>' }} />
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          style={{ background: 'rgba(0,0,0,.5)' }}>
+                          <span className="text-xs font-bold text-white">Open ↗</span>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                )}
+                {docs.length > 0 && (
+                  <div className="flex gap-2 flex-wrap">
+                    {docs.map((f: string, i: number) => (
+                      <a key={i} href={f} target="_blank" rel="noopener noreferrer"
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 hover:brightness-110 transition-all"
+                        style={{ background: 'rgba(59,130,246,.1)', color: '#60a5fa', border: '1px solid rgba(59,130,246,.2)' }}>
+                        📎 Document {i + 1}
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {(selected.status === 'submitted' || selected.status === 'under_review') && (
             <>
@@ -567,6 +593,20 @@ function ClaimsTab({ store, token, loading, toast, reload }: any) {
                 </button>
               </div>
             </>
+          )}
+
+          {selected.status === 'approved' && (
+            <div className="mt-4 p-4 rounded-xl" style={{ background: 'rgba(46,201,126,.07)', border: '1px solid rgba(46,201,126,.2)' }}>
+              <p className="text-sm font-semibold mb-1" style={{ color: '#2EC97E' }}>✅ Claim Approved — Payout Pending</p>
+              <p className="text-xs text-muted mb-3">Once you have processed the bank transfer, mark it as paid to notify the customer.</p>
+              <Field label="Payment Reference (optional)" value={note} onChange={setNote}
+                placeholder="e.g. GTB transfer REF-20240315-001" />
+              <button onClick={() => act(selected.id, 'paid')} disabled={!!busy}
+                className="w-full mt-3 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:brightness-110"
+                style={{ background: '#2EC97E', color: '#0A0F1E' }}>
+                {busy === 'paid' && <Spin />} 💰 Mark Payout as Sent
+              </button>
+            </div>
           )}
         </Modal>
       )}

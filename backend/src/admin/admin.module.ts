@@ -10,12 +10,14 @@ import { InsuranceProduct } from '../insurance-products/insurance-product.entity
 import { Payment } from '../payments/payment.entity';
 import { CommissionsModule } from '../commissions/commissions.module';
 import { UsersModule } from '../users/users.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, Policy, Claim, InsuranceProvider, InsuranceProduct, Payment]),
     CommissionsModule,
     UsersModule,
+    NotificationsModule,
   ],
   controllers: [AdminController],
   providers: [AdminService],

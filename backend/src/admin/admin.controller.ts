@@ -86,6 +86,14 @@ export class AdminController {
     @Body() body: { note?: string },
   ) { return this.adminService.rejectClaim(id, reviewerId, body.note); }
 
+  @Patch('claims/:id/paid')
+  @ApiOperation({ summary: 'Mark approved claim payout as sent' })
+  markClaimPaid(
+    @Param('id') id: string,
+    @CurrentUser('id') reviewerId: string,
+    @Body() body: { note?: string },
+  ) { return this.adminService.markClaimPaid(id, reviewerId, body.note); }
+
   // ── PROVIDERS ─────────────────────────────────────────────
   @Get('providers')
   @ApiOperation({ summary: 'List all insurance providers' })

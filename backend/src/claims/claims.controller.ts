@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ClaimsService, CreateClaimDto } from './claims.service';
@@ -14,6 +14,16 @@ export class ClaimsController {
   @Post() @ApiOperation({ summary: 'Submit a claim' })
   create(@CurrentUser('id') userId: string, @Body() dto: CreateClaimDto) {
     return this.claimsService.create(userId, dto);
+  }
+
+  @Patch(':id/evidence')
+  @ApiOperation({ summary: 'Attach evidence file URLs to a claim' })
+  attachEvidence(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() body: { fileUrls: string[] },
+  ) {
+    return this.claimsService.attachEvidence(id, userId, body.fileUrls);
   }
 
   @Get() @ApiOperation({ summary: 'Get my claims' })

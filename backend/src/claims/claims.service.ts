@@ -92,6 +92,14 @@ export class ClaimsService {
     return this.claimRepo.find({ order: { createdAt: 'DESC' } });
   }
 
+  async attachEvidence(claimId: string, userId: string, fileUrls: string[]): Promise<Claim> {
+    const claim = await this.findById(claimId);
+    if (claim.userId !== userId) throw new BadRequestException('Claim not owned by user');
+    const existing = claim.evidenceFiles || [];
+    await this.claimRepo.update(claimId, { evidenceFiles: [...existing, ...fileUrls] });
+    return this.findById(claimId);
+  }
+
   async review(claimId: string, reviewerId: string, dto: ReviewClaimDto): Promise<Claim> {
     const claim = await this.findById(claimId);
     const status = dto.status === 'approved' ? ClaimStatus.APPROVED : ClaimStatus.REJECTED;

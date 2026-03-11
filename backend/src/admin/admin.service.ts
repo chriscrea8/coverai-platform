@@ -8,6 +8,8 @@ import { InsuranceProvider } from '../insurance-providers/insurance-provider.ent
 import { InsuranceProduct } from '../insurance-products/insurance-product.entity';
 import { Payment } from '../payments/payment.entity';
 import { CommissionsService } from '../commissions/commissions.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class AdminService {
@@ -21,6 +23,8 @@ export class AdminService {
     @InjectRepository(InsuranceProduct)  private productRepo:  Repository<InsuranceProduct>,
     @InjectRepository(Payment)           private paymentRepo:  Repository<Payment>,
     private readonly commissionsService: CommissionsService,
+    private readonly notificationsService: NotificationsService,
+    private readonly usersService: UsersService,
   ) {}
 
   // ── STATS ─────────────────────────────────────────────────
@@ -122,10 +126,32 @@ export class AdminService {
     if (!claim) throw new NotFoundException('Claim not found');
     await this.claimRepo.update(claimId, {
       status: ClaimStatus.APPROVED,
-      reviewerId: reviewerId,
+      reviewerId,
       reviewedAt: new Date(),
       reviewerNotes: note || 'Approved by admin',
     });
+    // Notify user
+    try {
+      const user = await this.usersService.findById(claim.userId);
+      if (user) await this.notificationsService.sendEmail(user, {
+        subject: `✅ Claim Approved — ${claim.claimNumber}`,
+        message: [
+          `Hello ${user.name},`,
+          '',
+          `Great news! Your claim ${claim.claimNumber} has been approved.`,
+          claim.approvedAmount ? `Approved Amount: ₦${Number(claim.approvedAmount).toLocaleString()}` : '',
+          note ? `Reviewer Note: ${note}` : '',
+          '',
+          'Our payments team will process your payout within 5–7 business days.',
+          'You will receive a separate notification when the payment is initiated.',
+          '',
+          'Track your claim at coverai.ng/dashboard',
+        ].filter(Boolean).join('\n'),
+        entityType: 'claim',
+        entityId: claim.id,
+        metadata: { claimNumber: claim.claimNumber, status: 'approved' },
+      });
+    } catch {}
     return { message: 'Claim approved', id: claimId };
   }
 
@@ -134,11 +160,63 @@ export class AdminService {
     if (!claim) throw new NotFoundException('Claim not found');
     await this.claimRepo.update(claimId, {
       status: ClaimStatus.REJECTED,
-      reviewerId: reviewerId,
+      reviewerId,
       reviewedAt: new Date(),
       reviewerNotes: note || 'Rejected by admin',
+      rejectionReason: note || null,
     });
+    // Notify user
+    try {
+      const user = await this.usersService.findById(claim.userId);
+      if (user) await this.notificationsService.sendEmail(user, {
+        subject: `❌ Claim Decision — ${claim.claimNumber}`,
+        message: [
+          `Hello ${user.name},`,
+          '',
+          `After careful review, your claim ${claim.claimNumber} could not be approved at this time.`,
+          note ? `Reason: ${note}` : '',
+          '',
+          'If you believe this decision is incorrect, please contact our support team at claims@coverai.ng with your claim number and any additional documentation.',
+        ].filter(Boolean).join('\n'),
+        entityType: 'claim',
+        entityId: claim.id,
+        metadata: { claimNumber: claim.claimNumber, status: 'rejected' },
+      });
+    } catch {}
     return { message: 'Claim rejected', id: claimId };
+  }
+
+  async markClaimPaid(claimId: string, reviewerId: string, note?: string) {
+    const claim = await this.claimRepo.findOne({ where: { id: claimId } });
+    if (!claim) throw new NotFoundException('Claim not found');
+    if (claim.status !== ClaimStatus.APPROVED) throw new NotFoundException('Claim must be approved first');
+    await this.claimRepo.update(claimId, {
+      status: ClaimStatus.PAID,
+      resolvedAt: new Date(),
+      reviewerNotes: note ? `${claim.reviewerNotes || ''}\nPayout: ${note}`.trim() : claim.reviewerNotes,
+    });
+    // Notify user
+    try {
+      const user = await this.usersService.findById(claim.userId);
+      if (user) await this.notificationsService.sendEmail(user, {
+        subject: `💰 Claim Payout Sent — ${claim.claimNumber}`,
+        message: [
+          `Hello ${user.name},`,
+          '',
+          `Your claim payout for ${claim.claimNumber} has been processed.`,
+          claim.approvedAmount ? `Amount: ₦${Number(claim.approvedAmount).toLocaleString()}` : '',
+          note ? `Reference: ${note}` : '',
+          '',
+          'Funds should appear in your account within 1–2 business days depending on your bank.',
+          '',
+          'Thank you for choosing CoverAI.',
+        ].filter(Boolean).join('\n'),
+        entityType: 'claim',
+        entityId: claim.id,
+        metadata: { claimNumber: claim.claimNumber, status: 'paid' },
+      });
+    } catch {}
+    return { message: 'Claim marked as paid', id: claimId };
   }
 
   // ── PROVIDERS ─────────────────────────────────────────────

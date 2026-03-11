@@ -41,8 +41,47 @@ export default function NewClaimPage() {
     }
     setLoading(true); setError('')
     try {
+      // 1. Create the claim
       const res = await claimsApi.create({ ...form, claimAmount: Number(form.claimAmount) })
       const claim = res.data.data
+      const claimId = claim.id
+
+      // 2. Upload evidence files if any
+      if (files.length > 0) {
+        try {
+          const token = localStorage.getItem('access_token')
+          const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'
+
+          // Upload each file individually
+          const uploadedUrls: string[] = []
+          for (const file of files) {
+            const fd = new FormData()
+            fd.append('file', file)
+            const uploadRes = await fetch(
+              `${API}/files/upload?entityType=claim&entityId=${claimId}`,
+              { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd }
+            )
+            if (uploadRes.ok) {
+              const uploadData = await uploadRes.json()
+              const record = uploadData?.data ?? uploadData
+              if (record?.fileUrl) uploadedUrls.push(record.fileUrl)
+            }
+          }
+
+          // 3. Attach file URLs to the claim
+          if (uploadedUrls.length > 0) {
+            await fetch(`${API}/claims/${claimId}/evidence`, {
+              method: 'PATCH',
+              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ fileUrls: uploadedUrls }),
+            })
+          }
+        } catch (uploadErr) {
+          // Don't fail the whole submission if uploads fail — claim is already created
+          console.warn('File upload failed:', uploadErr)
+        }
+      }
+
       setSuccess(`Claim ${claim.claimNumber} submitted successfully! Redirecting...`)
       setTimeout(() => router.push('/dashboard'), 2500)
     } catch (e: any) {
