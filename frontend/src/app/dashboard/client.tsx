@@ -485,8 +485,19 @@ function DashboardInner() {
                       <div className="min-w-0">
                         <div className="font-semibold text-sm truncate">{p.policyNumber}</div>
                         <div className="text-muted text-xs mt-0.5 truncate">
-                          {p.policyDetails?.planName || 'Insurance Policy'} · ₦{Number(p.premiumAmount).toLocaleString()}
+                          {p.policyDetails?.planName || 'Insurance Policy'} ·{' '}
+                          {p.paymentFrequency && p.paymentFrequency !== 'annually'
+                            ? `₦${Number(p.installmentAmount || p.premiumAmount).toLocaleString()}/${p.paymentFrequency === 'weekly' ? 'wk' : p.paymentFrequency === 'monthly' ? 'mo' : 'qtr'}`
+                            : `₦${Number(p.premiumAmount).toLocaleString()}/yr`}
                         </div>
+                        {p.policyStatus === 'lapsed' && (
+                          <div className="text-xs font-semibold mt-0.5" style={{ color: '#E84545' }}>⚠ Lapsed — tap to reactivate</div>
+                        )}
+                        {p.policyStatus === 'active' && p.nextPaymentDate && (
+                          <div className="text-xs mt-0.5" style={{ color: '#F4A623' }}>
+                            Next: {new Date(p.nextPaymentDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
+                          </div>
+                        )}
                       </div>
                       <Badge status={p.policyStatus} />
                     </div>
@@ -543,15 +554,21 @@ function DashboardInner() {
                 <div className="space-y-4">
                   {policies.map((p, i) => {
                     const isNew = highlightPolicy && i === 0
-                    const nextPayment = p.endDate
-                      ? new Date(new Date(p.endDate).getTime() - 30 * 24 * 60 * 60 * 1000)
-                      : null
+                    const isInstallment = p.paymentFrequency && p.paymentFrequency !== 'annually'
+                    const isLapsed = p.policyStatus === 'lapsed'
+                    const isPending = p.policyStatus === 'pending'
+                    const freqLabel = { weekly: 'week', monthly: 'month', quarterly: 'quarter', annually: 'year' }[p.paymentFrequency] || 'year'
+                    const nextDue = p.nextPaymentDate ? new Date(p.nextPaymentDate) : null
+                    const daysUntilNext = nextDue ? Math.ceil((nextDue.getTime() - Date.now()) / (24*60*60*1000)) : null
+                    const isDueSoon = daysUntilNext !== null && daysUntilNext <= 3 && daysUntilNext >= 0
+                    const graceEnd = p.gracePeriodEnd ? new Date(p.gracePeriodEnd) : null
+                    const inGrace = graceEnd && nextDue && new Date() > nextDue && new Date() < graceEnd
 
                     return (
                       <div key={p.id} className="p-5 rounded-2xl transition-all"
                         style={{
                           background: 'rgba(13,27,62,.8)',
-                          border: isNew ? '1px solid rgba(46,201,126,.4)' : '1px solid rgba(255,255,255,.07)',
+                          border: isLapsed ? '1px solid rgba(232,69,69,.3)' : isNew ? '1px solid rgba(46,201,126,.4)' : '1px solid rgba(255,255,255,.07)',
                           boxShadow: isNew ? '0 0 20px rgba(46,201,126,.1)' : 'none'
                         }}>
                         {isNew && (
@@ -562,17 +579,28 @@ function DashboardInner() {
                         <div className="flex justify-between items-start gap-3 mb-4">
                           <div className="min-w-0">
                             <div className="font-syne font-bold text-base truncate">{p.policyNumber}</div>
-                            <div className="text-muted text-sm mt-0.5">{p.policyDetails?.planName || 'Insurance Policy'}</div>
+                            <div className="text-muted text-sm mt-0.5 flex items-center gap-2">
+                              {p.policyDetails?.planName || 'Insurance Policy'}
+                              {isInstallment && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                  style={{ background: 'rgba(0,194,168,.12)', color: '#00C2A8', border: '1px solid rgba(0,194,168,.2)' }}>
+                                  Microinsurance
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <Badge status={p.policyStatus} />
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                           {[
-                            { label: 'Annual Premium', value: `₦${Number(p.premiumAmount).toLocaleString()}` },
+                            {
+                              label: isInstallment ? `${p.policyDetails?.frequencyLabel || 'Payment'}` : 'Annual Premium',
+                              value: `₦${Number(p.installmentAmount || p.premiumAmount).toLocaleString()}${isInstallment ? `/${freqLabel}` : ''}`
+                            },
                             { label: 'Coverage', value: p.coverageAmount ? `₦${Number(p.coverageAmount).toLocaleString()}` : 'As agreed' },
                             { label: 'Start Date', value: p.startDate ? new Date(p.startDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Today' },
-                            { label: 'Expiry Date', value: p.endDate ? new Date(p.endDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '1 Year' },
+                            { label: 'Covered Until', value: p.endDate ? new Date(p.endDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '1 Year' },
                           ].map(item => (
                             <div key={item.label} className="p-3 rounded-xl" style={{ background: 'rgba(255,255,255,.04)' }}>
                               <div className="text-muted text-xs mb-0.5">{item.label}</div>
@@ -581,17 +609,58 @@ function DashboardInner() {
                           ))}
                         </div>
 
-                        {nextPayment && (
-                          <div className="flex items-center gap-2 p-3 rounded-xl mb-4"
-                            style={{ background: 'rgba(244,166,35,.08)', border: '1px solid rgba(244,166,35,.2)' }}>
-                            <span className="text-sm">📅</span>
-                            <div className="text-xs">
-                              <span className="text-muted">Next renewal: </span>
-                              <strong style={{ color: '#F4A623' }}>
-                                {nextPayment.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
-                              </strong>
-                              <span className="text-muted"> ({Math.ceil((nextPayment.getTime() - Date.now()) / (24*60*60*1000))} days)</span>
+                        {/* Installment progress bar */}
+                        {isInstallment && p.paymentsTotal > 1 && (
+                          <div className="mb-4 p-3 rounded-xl" style={{ background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.06)' }}>
+                            <div className="flex justify-between text-xs mb-2">
+                              <span className="text-muted">Installment progress</span>
+                              <span className="font-semibold">{p.paymentsMade} / {p.paymentsTotal} payments</span>
                             </div>
+                            <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,.08)' }}>
+                              <div className="h-full rounded-full transition-all" style={{
+                                width: `${Math.min((Number(p.paymentsMade) / Number(p.paymentsTotal)) * 100, 100)}%`,
+                                background: isLapsed ? '#E84545' : '#2EC97E',
+                              }} />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Next payment banner */}
+                        {p.policyStatus === 'active' && nextDue && isInstallment && (
+                          <div className="flex items-center gap-2 p-3 rounded-xl mb-4"
+                            style={{
+                              background: isDueSoon ? 'rgba(244,166,35,.1)' : 'rgba(255,255,255,.04)',
+                              border: isDueSoon ? '1px solid rgba(244,166,35,.3)' : '1px solid rgba(255,255,255,.06)',
+                            }}>
+                            <span className="text-sm">{isDueSoon ? '⏰' : '📅'}</span>
+                            <div className="text-xs">
+                              <span className="text-muted">Next payment: </span>
+                              <strong style={{ color: isDueSoon ? '#F4A623' : '#fff' }}>
+                                {nextDue.toLocaleDateString('en-NG', { day: 'numeric', month: 'long' })}
+                              </strong>
+                              {daysUntilNext === 0 && <span style={{ color: '#E84545' }}> — Due today!</span>}
+                              {daysUntilNext > 0 && <span className="text-muted"> ({daysUntilNext} days)</span>}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* In grace period warning */}
+                        {inGrace && (
+                          <div className="flex items-center gap-2 p-3 rounded-xl mb-4"
+                            style={{ background: 'rgba(232,69,69,.08)', border: '1px solid rgba(232,69,69,.25)' }}>
+                            <span className="text-sm">⚠️</span>
+                            <div className="text-xs">
+                              <span className="font-semibold text-red-400">Payment overdue — in grace period. </span>
+                              <span className="text-muted">Coverage continues until {graceEnd!.toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}. Pay now to avoid lapse.</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Lapsed banner */}
+                        {isLapsed && (
+                          <div className="p-4 rounded-xl mb-4" style={{ background: 'rgba(232,69,69,.08)', border: '1px solid rgba(232,69,69,.25)' }}>
+                            <p className="text-sm font-semibold mb-1" style={{ color: '#E84545' }}>⚠️ Coverage Paused — Policy Lapsed</p>
+                            <p className="text-xs text-muted">Your policy lapsed due to a missed payment. You are not currently covered. Make a payment of <strong className="text-white">₦{Number(p.installmentAmount || p.premiumAmount).toLocaleString()}</strong> to reactivate immediately.</p>
                           </div>
                         )}
 
@@ -607,12 +676,57 @@ function DashboardInner() {
                         )}
 
                         <div className="flex gap-2 flex-wrap">
-                          {p.policyStatus === 'pending' && (
+                          {isPending && (
                             <Link href="/dashboard?tab=payments"
                               className="px-4 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
                               style={{ background: '#F4A623', color: '#0A0F1E' }}>
                               Complete Payment
                             </Link>
+                          )}
+                          {isLapsed && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const token = localStorage.getItem('access_token')
+                                  const r = await fetch(`${API}/policies/${p.id}/reactivate`, {
+                                    method: 'POST', headers: { Authorization: `Bearer ${token}` }
+                                  })
+                                  const d = await r.json()
+                                  const payAmount = d.data?.paymentAmount || d.paymentAmount || Number(p.installmentAmount || p.premiumAmount)
+                                  const payR = await fetch(`${API}/payments/create`, {
+                                    method: 'POST',
+                                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ policyId: p.id, amount: payAmount, callbackUrl: `${window.location.origin}/payment/success` })
+                                  })
+                                  const payD = await payR.json()
+                                  const url = payD.data?.authorizationUrl || payD.authorizationUrl
+                                  if (url) window.location.href = url
+                                } catch { alert('Could not initiate reactivation. Please try again.') }
+                              }}
+                              className="px-4 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
+                              style={{ background: '#E84545', color: '#fff' }}>
+                              🔄 Reactivate Coverage
+                            </button>
+                          )}
+                          {(inGrace || (isInstallment && p.policyStatus === 'active' && daysUntilNext !== null && daysUntilNext <= 7)) && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const token = localStorage.getItem('access_token')
+                                  const payR = await fetch(`${API}/payments/create`, {
+                                    method: 'POST',
+                                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ policyId: p.id, amount: Number(p.installmentAmount || p.premiumAmount), callbackUrl: `${window.location.origin}/payment/success` })
+                                  })
+                                  const payD = await payR.json()
+                                  const url = payD.data?.authorizationUrl || payD.authorizationUrl
+                                  if (url) window.location.href = url
+                                } catch { alert('Could not initiate payment. Please try again.') }
+                              }}
+                              className="px-4 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
+                              style={{ background: '#F4A623', color: '#0A0F1E' }}>
+                              💳 Pay Now
+                            </button>
                           )}
                           {p.documentUrl && (
                             <a href={p.documentUrl} target="_blank" rel="noopener noreferrer"
@@ -627,6 +741,7 @@ function DashboardInner() {
                             File Claim
                           </Link>
                         </div>
+
                       </div>
                     )
                   })}

@@ -94,3 +94,21 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_name VARCHAR(100);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account_number VARCHAR(20);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_account_name VARCHAR(255);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_code VARCHAR(10);
+
+-- 9. Payment frequency / installment / microinsurance columns on policies
+DO $$ BEGIN
+  CREATE TYPE payment_frequency AS ENUM ('weekly', 'monthly', 'quarterly', 'annually');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+ALTER TABLE policies ADD COLUMN IF NOT EXISTS payment_frequency payment_frequency NOT NULL DEFAULT 'annually';
+ALTER TABLE policies ADD COLUMN IF NOT EXISTS installment_amount DECIMAL(12,2);
+ALTER TABLE policies ADD COLUMN IF NOT EXISTS next_payment_date DATE;
+ALTER TABLE policies ADD COLUMN IF NOT EXISTS grace_period_end DATE;
+ALTER TABLE policies ADD COLUMN IF NOT EXISTS payments_made INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE policies ADD COLUMN IF NOT EXISTS payments_total INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE policies ADD COLUMN IF NOT EXISTS lapsed_at TIMESTAMPTZ;
+
+-- Ensure LAPSED is in the policy_status enum
+DO $$ BEGIN
+  ALTER TYPE policy_status ADD VALUE IF NOT EXISTS 'lapsed';
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;

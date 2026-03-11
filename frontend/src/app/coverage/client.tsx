@@ -113,6 +113,24 @@ export default function CoveragePage() {
   const [purchasing, setPurchasing] = useState<string | null>(null)
   const [toast, setToast] = useState('')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [frequency, setFrequency] = useState<'weekly'|'monthly'|'quarterly'|'annually'>('monthly')
+
+  // Pricing config mirrors backend FREQUENCY_CONFIG
+  const FREQ_CONFIG: Record<string, { label: string; periods: number; graceDays: number; discount: number; desc: string }> = {
+    weekly:    { label: 'Weekly',    periods: 52, graceDays: 3,  discount: 1.20, desc: 'Pay every week — ideal for daily traders' },
+    monthly:   { label: 'Monthly',   periods: 12, graceDays: 7,  discount: 1.12, desc: 'Pay once a month — most flexible' },
+    quarterly: { label: 'Quarterly', periods: 4,  graceDays: 14, discount: 1.06, desc: 'Pay 4× a year — good balance' },
+    annually:  { label: 'Annually',  periods: 1,  graceDays: 0,  discount: 1.00, desc: 'Pay once — best value, save up to 20%' },
+  }
+
+  function calcInstallment(annualPrice: number, freq: string) {
+    const cfg = FREQ_CONFIG[freq]
+    if (!cfg || !annualPrice) return { installment: 0, annual: 0 }
+    const annual = Math.round(annualPrice * cfg.discount)
+    const installment = Math.ceil(annual / cfg.periods)
+    return { installment, annual }
+  }
+
 
   useEffect(() => {
     setIsLoggedIn(!!localStorage.getItem('access_token'))
@@ -158,9 +176,12 @@ export default function CoveragePage() {
     setToast('')
 
     try {
-      // Use api instance (axios) so the JWT auto-refresh interceptor fires on 401
+      const annualPrice = plan.price || plan.premiumMin || plan.minPremium || 0
+      const { installment } = calcInstallment(annualPrice, frequency)
+
       const policyBody: Record<string, any> = {
-        premiumAmount: plan.price || plan.premiumMin || plan.minPremium,
+        premiumAmount: annualPrice,      // backend recalculates installment from this
+        paymentFrequency: frequency,
         policyDetails: {
           planName: plan.displayName || plan.name,
           coverType: plan.category || plan.productType,
@@ -168,7 +189,6 @@ export default function CoveragePage() {
           matchScore: plan.match,
         },
       }
-      // Only include IDs if they are real UUIDs (not null/placeholder)
       const isUUID = (v: any) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
       if (isUUID(plan.id)) policyBody.productId = plan.id
       if (isUUID(plan.providerId)) policyBody.providerId = plan.providerId
@@ -178,11 +198,11 @@ export default function CoveragePage() {
       const policyRes = await api.post('/policies/purchase', policyBody)
       const policyId = policyRes.data?.data?.id || policyRes.data?.id
 
-      // Step 2: Initiate payment
+      // Step 2: Initiate payment for the first installment amount
       const frontendUrl = window.location.origin
       const payRes = await api.post('/payments/create', {
         policyId,
-        amount: plan.price || plan.premiumMin || plan.minPremium,
+        amount: installment,   // pay only the installment, not full annual
         callbackUrl: `${frontendUrl}/payment/success`,
       })
 
@@ -221,7 +241,56 @@ export default function CoveragePage() {
           </div>
         )}
 
-        {loadingProducts ? (
+        {/* ── Payment frequency selector ── */}
+        <div className="mb-6 p-5 rounded-2xl" style={{ background: 'rgba(13,27,62,.8)', border: '1px solid rgba(255,255,255,.08)' }}>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="font-syne font-bold text-sm">How often do you want to pay?</p>
+              <p className="text-muted text-xs mt-0.5">Annual plan is always cheapest. Shorter cycles suit lower cash flow.</p>
+            </div>
+            <span className="px-2.5 py-1 rounded-full text-xs font-bold" style={{ background: 'rgba(46,201,126,.12)', color: '#2EC97E', border: '1px solid rgba(46,201,126,.2)' }}>
+              Microinsurance ✦
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {(Object.entries(FREQ_CONFIG) as any[]).map(([key, cfg]: any) => {
+              const isSelected = frequency === key
+              const isAnnual = key === 'annually'
+              return (
+                <button key={key} onClick={() => setFrequency(key as any)}
+                  className="p-3 rounded-xl text-left transition-all relative"
+                  style={{
+                    background: isSelected ? 'rgba(244,166,35,.15)' : 'rgba(255,255,255,.04)',
+                    border: isSelected ? '1px solid rgba(244,166,35,.5)' : '1px solid rgba(255,255,255,.08)',
+                  }}>
+                  {isAnnual && (
+                    <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap"
+                      style={{ background: '#2EC97E', color: '#0A0F1E' }}>Best Value</span>
+                  )}
+                  <p className="font-syne font-bold text-sm" style={{ color: isSelected ? '#F4A623' : '#fff' }}>{cfg.label}</p>
+                  <p className="text-[11px] text-muted mt-0.5 leading-snug">{cfg.desc}</p>
+                  {isAnnual && (
+                    <p className="text-[11px] font-semibold mt-1" style={{ color: '#2EC97E' }}>Save up to 20%</p>
+                  )}
+                  {key === 'weekly' && (
+                    <p className="text-[11px] font-semibold mt-1" style={{ color: '#00C2A8' }}>{cfg.graceDays}-day grace period</p>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+          {frequency !== 'annually' && (
+            <div className="mt-3 p-3 rounded-xl flex items-start gap-2.5" style={{ background: 'rgba(244,166,35,.06)', border: '1px solid rgba(244,166,35,.15)' }}>
+              <span className="text-sm shrink-0">💡</span>
+              <p className="text-xs text-muted leading-relaxed">
+                <span className="text-white font-semibold">Microinsurance: </span>
+                Each payment covers your {FREQ_CONFIG[frequency].label.toLowerCase().replace('ly','')} period. Miss a payment and you get a <strong className="text-white">{FREQ_CONFIG[frequency].graceDays}-day grace period</strong> before coverage pauses. Pay anytime to reactivate.
+              </p>
+            </div>
+          )}
+        </div>
+
+
           <div className="flex flex-col items-center py-16 gap-4">
             <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
             <p className="text-muted text-sm">Analysing your profile and matching products…</p>
@@ -252,18 +321,35 @@ export default function CoveragePage() {
 
                 <div className="flex items-center justify-between flex-wrap gap-3">
                   <div>
-                    <div className="font-syne font-black text-xl md:text-2xl text-accent">
-                      ₦{(p.price || p.premiumMin || p.minPremium || 0).toLocaleString()}
-                      <span className="text-muted text-sm font-normal">/year</span>
-                    </div>
-                    {p.coverageAmount && (
-                      <div className="text-muted text-xs mt-0.5">
-                        Covers up to <span className="text-white">₦{Number(p.coverageAmount).toLocaleString()}</span>
-                      </div>
-                    )}
-                    <div className="text-xs mt-1" style={{ color: '#00C2A8' }}>
-                      ✦ {p.match}% match for your profile
-                    </div>
+                    {(() => {
+                      const annualBase = p.price || p.premiumMin || p.minPremium || 0
+                      const { installment, annual } = calcInstallment(annualBase, frequency)
+                      const cfg = FREQ_CONFIG[frequency]
+                      const isAnnual = frequency === 'annually'
+                      const moneySaved = isAnnual ? 0 : Math.round(annualBase * (FREQ_CONFIG['monthly'].discount - FREQ_CONFIG[frequency].discount))
+                      return (
+                        <>
+                          <div className="font-syne font-black text-xl md:text-2xl text-accent">
+                            ₦{installment.toLocaleString()}
+                            <span className="text-muted text-sm font-normal">/{cfg.label.toLowerCase().replace('ly','').replace('ual','')}</span>
+                          </div>
+                          {!isAnnual && (
+                            <div className="text-xs mt-0.5" style={{ color: '#8492B4' }}>
+                              ≈ ₦{annual.toLocaleString()}/year ·{' '}
+                              <span style={{ color: '#F4A623' }}>₦{annualBase.toLocaleString()} if paid annually</span>
+                            </div>
+                          )}
+                          {p.coverageAmount && (
+                            <div className="text-muted text-xs mt-0.5">
+                              Covers up to <span className="text-white">₦{Number(p.coverageAmount).toLocaleString()}</span>
+                            </div>
+                          )}
+                          <div className="text-xs mt-1" style={{ color: '#00C2A8' }}>
+                            ✦ {p.match}% match for your profile
+                          </div>
+                        </>
+                      )
+                    })()}
                   </div>
                   <button
                     onClick={() => purchase(p)}

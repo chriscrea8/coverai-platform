@@ -1,7 +1,8 @@
 // ── policies/policies.dto.ts ─────────────────────────────────
-import { IsNumber, IsPositive, IsOptional, IsBoolean } from 'class-validator';
+import { IsNumber, IsPositive, IsOptional, IsBoolean, IsEnum } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
+import { PaymentFrequency } from './policy.entity';
 
 // Sanitize: return the value only if it's a valid UUID v4, else undefined.
 // This runs BEFORE class-validator so invalid / missing IDs are silently dropped.
@@ -22,4 +23,6 @@ export class PurchasePolicyDto {
   @ApiPropertyOptional() @IsOptional() @IsNumber() coverageAmount?: number;
   @ApiPropertyOptional() @IsOptional() policyDetails?: Record<string, any>;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() autoRenew?: boolean;
+  @ApiPropertyOptional({ enum: PaymentFrequency, default: PaymentFrequency.ANNUALLY })
+  @IsOptional() @IsEnum(PaymentFrequency) paymentFrequency?: PaymentFrequency;
 }

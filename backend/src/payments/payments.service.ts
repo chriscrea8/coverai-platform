@@ -79,13 +79,14 @@ export class PaymentsService {
       paymentStatus: PaymentStatus.SUCCESSFUL, paidAt: new Date(), gatewayResponse: data,
     });
     if (payment.policyId) {
-      await this.policiesService.activate(payment.policyId).catch(() => {});
+      // activate() handles both first-time activation AND advancing installment dates
+      await this.policiesService.activate(payment.policyId, payment.id).catch(() => {});
     }
     try {
       const user = await this.usersService.findById(payment.userId);
       if (user) await this.notificationsService.sendEmail(user, {
         subject: '✅ Payment Confirmed',
-        message: `Payment of ₦${payment.amount} confirmed. Ref: ${payment.paymentReference}`,
+        message: `Payment of ₦${Number(payment.amount).toLocaleString()} confirmed. Ref: ${payment.paymentReference}`,
         entityType: 'payment',
         entityId: payment.id,
       });
