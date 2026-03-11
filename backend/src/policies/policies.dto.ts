@@ -12,9 +12,9 @@ function sanitizeUuid(value: any): string | undefined {
 }
 
 export class PurchasePolicyDto {
-  @ApiPropertyOptional() @IsOptional() @Transform(({ value }) => sanitizeUuid(value)) @IsUUID('all', { each: false }) productId?: string;
-  @ApiPropertyOptional() @IsOptional() @Transform(({ value }) => sanitizeUuid(value)) @IsUUID('all', { each: false }) providerId?: string;
-  @ApiPropertyOptional() @IsOptional() @Transform(({ value }) => sanitizeUuid(value)) @IsUUID('all', { each: false }) smeId?: string;
+  @ApiPropertyOptional() @IsUUID('all') @IsOptional() @Transform(({ value }) => sanitizeUuid(value)) productId?: string;
+  @ApiPropertyOptional() @IsUUID('all') @IsOptional() @Transform(({ value }) => sanitizeUuid(value)) providerId?: string;
+  @ApiPropertyOptional() @IsUUID('all') @IsOptional() @Transform(({ value }) => sanitizeUuid(value)) smeId?: string;
   @ApiProperty() @IsNumber() @IsPositive() premiumAmount: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() coverageAmount?: number;
   @ApiPropertyOptional() @IsOptional() policyDetails?: Record<string, any>;

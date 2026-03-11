@@ -29,6 +29,10 @@ export class PoliciesService {
     const commissionRate = 0.10; // 10% default; fetched from product in real impl
     const commissionAmount = Number(dto.premiumAmount) * commissionRate;
 
+    // Belt-and-suspenders: strip any non-UUID values that slipped past the DTO transform
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const safeId = (v?: string) => (v && uuidRe.test(v) ? v : undefined);
+
     const startDate = new Date();
     const endDate = new Date();
     endDate.setFullYear(endDate.getFullYear() + 1);
@@ -36,9 +40,9 @@ export class PoliciesService {
     const policy = this.policyRepo.create({
       policyNumber,
       userId,
-      smeId: dto.smeId,
-      productId: dto.productId,
-      providerId: dto.providerId,
+      smeId:      safeId(dto.smeId),
+      productId:  safeId(dto.productId),
+      providerId: safeId(dto.providerId),
       premiumAmount: dto.premiumAmount,
       commissionAmount,
       coverageAmount: dto.coverageAmount,
