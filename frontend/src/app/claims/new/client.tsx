@@ -48,12 +48,12 @@ export default function NewClaimPage() {
 
       // 2. Upload evidence files if any
       if (files.length > 0) {
+        let uploadedCount = 0
+        const uploadedUrls: string[] = []
         try {
           const token = localStorage.getItem('access_token')
           const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'
 
-          // Upload each file individually
-          const uploadedUrls: string[] = []
           for (const file of files) {
             const fd = new FormData()
             fd.append('file', file)
@@ -64,11 +64,16 @@ export default function NewClaimPage() {
             if (uploadRes.ok) {
               const uploadData = await uploadRes.json()
               const record = uploadData?.data ?? uploadData
-              if (record?.fileUrl) uploadedUrls.push(record.fileUrl)
+              if (record?.fileUrl) {
+                uploadedUrls.push(record.fileUrl)
+                uploadedCount++
+              }
+            } else {
+              console.warn(`File upload failed for ${file.name}: HTTP ${uploadRes.status}`)
             }
           }
 
-          // 3. Attach file URLs to the claim
+          // Attach all successfully uploaded URLs to the claim
           if (uploadedUrls.length > 0) {
             await fetch(`${API}/claims/${claimId}/evidence`, {
               method: 'PATCH',
@@ -78,7 +83,16 @@ export default function NewClaimPage() {
           }
         } catch (uploadErr) {
           // Don't fail the whole submission if uploads fail — claim is already created
-          console.warn('File upload failed:', uploadErr)
+          console.warn('File upload error:', uploadErr)
+          uploadedCount = 0
+        }
+
+        const failedCount = files.length - uploadedCount
+        if (failedCount > 0 && uploadedCount === 0) {
+          setError(`Claim submitted but ${failedCount} evidence file(s) failed to upload. You can contact support to attach them manually.`)
+          setTimeout(() => router.push('/dashboard'), 4000)
+          setLoading(false)
+          return
         }
       }
 

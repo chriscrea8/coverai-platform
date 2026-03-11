@@ -43,18 +43,24 @@ export class FilesService {
   ): Promise<FileRecord> {
     const ext = file.originalname.split('.').pop();
     const fileKey = `${options?.entityType || 'uploads'}/${userId}/${uuidv4()}.${ext}`;
-    let fileUrl = `https://${this.bucket}.s3.amazonaws.com/${fileKey}`;
+    let fileUrl: string;
 
     if (this.s3) {
+      // Production: upload to S3
       await this.s3.send(new PutObjectCommand({
         Bucket: this.bucket,
         Key: fileKey,
         Body: file.buffer,
         ContentType: file.mimetype,
       }));
-      if (!options?.isPublic) {
-        fileUrl = await this.getSignedUrl(fileKey);
-      }
+      fileUrl = options?.isPublic
+        ? `https://${this.bucket}.s3.amazonaws.com/${fileKey}`
+        : await this.getSignedUrl(fileKey);
+    } else {
+      // No S3 configured — store as base64 data URI so files are actually viewable
+      const base64 = file.buffer.toString('base64');
+      fileUrl = `data:${file.mimetype};base64,${base64}`;
+      this.logger.warn(`No S3 configured — storing file as base64 data URI (${file.size} bytes). Set AWS env vars for production storage.`);
     }
 
     const record = this.fileRepo.create({

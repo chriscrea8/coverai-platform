@@ -536,7 +536,21 @@ function ClaimsTab({ store, token, loading, toast, reload }: any) {
           </div>
 
           {selected.evidenceFiles?.length > 0 && (() => {
-            const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp|bmp)(\?|$)/i.test(url)
+            const isImage = (url: string) => {
+              if (url.startsWith('data:image/')) return true
+              return /\.(jpg|jpeg|png|gif|webp|bmp)(\?|$)/i.test(url)
+            }
+            const isPdf = (url: string) => {
+              if (url.startsWith('data:application/pdf')) return true
+              return /\.pdf(\?|$)/i.test(url)
+            }
+            const getLabel = (url: string, i: number) => {
+              if (url.startsWith('data:')) {
+                const mime = url.split(';')[0].replace('data:', '')
+                return mime.split('/')[1]?.toUpperCase() || `File ${i+1}`
+              }
+              return url.split('/').pop()?.split('?')[0] || `File ${i+1}`
+            }
             const imgs = selected.evidenceFiles.filter(isImage)
             const docs = selected.evidenceFiles.filter((f: string) => !isImage(f))
             return (
@@ -565,9 +579,10 @@ function ClaimsTab({ store, token, loading, toast, reload }: any) {
                   <div className="flex gap-2 flex-wrap">
                     {docs.map((f: string, i: number) => (
                       <a key={i} href={f} target="_blank" rel="noopener noreferrer"
+                        download={f.startsWith('data:') ? `evidence-${i+1}` : undefined}
                         className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 hover:brightness-110 transition-all"
                         style={{ background: 'rgba(59,130,246,.1)', color: '#60a5fa', border: '1px solid rgba(59,130,246,.2)' }}>
-                        📎 Document {i + 1}
+                        {isPdf(f) ? '📄' : '📎'} {getLabel(f, i)}
                       </a>
                     ))}
                   </div>
@@ -576,7 +591,15 @@ function ClaimsTab({ store, token, loading, toast, reload }: any) {
             )
           })()}
 
-          {(selected.status === 'submitted' || selected.status === 'under_review') && (
+          {(!selected.evidenceFiles || selected.evidenceFiles.length === 0) && (
+            <div className="mb-4 p-3 rounded-xl flex items-center gap-2"
+              style={{ background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.06)' }}>
+              <span className="text-base">📂</span>
+              <p className="text-xs text-muted">No evidence files submitted with this claim.</p>
+            </div>
+          )}
+
+
             <>
               <Field label="Decision Note (visible to customer)" value={note} onChange={setNote} textarea
                 placeholder="Provide context for your decision…" rows={3} />
