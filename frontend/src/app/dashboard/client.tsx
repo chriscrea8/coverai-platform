@@ -800,19 +800,65 @@ function DashboardInner() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {payments.map(p => (
-                    <div key={p.id} className="p-4 rounded-2xl flex items-center justify-between gap-3"
-                      style={{ background: 'rgba(13,27,62,.8)', border: '1px solid rgba(255,255,255,.07)' }}>
-                      <div className="min-w-0">
-                        <div className="font-semibold text-sm font-mono truncate">{p.paymentReference}</div>
-                        <div className="text-muted text-xs mt-0.5">{new Date(p.createdAt).toLocaleDateString('en-NG', { dateStyle: 'medium' })}</div>
+                  {payments.map(p => {
+                    const isPending = p.paymentStatus === 'pending'
+                    return (
+                      <div key={p.id} className="p-4 rounded-2xl"
+                        style={{ background: 'rgba(13,27,62,.8)', border: `1px solid ${isPending ? 'rgba(244,166,35,.25)' : 'rgba(255,255,255,.07)'}` }}>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="font-semibold text-sm font-mono truncate">{p.paymentReference}</div>
+                            <div className="text-muted text-xs mt-0.5">{new Date(p.createdAt).toLocaleDateString('en-NG', { dateStyle: 'medium' })}</div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="font-syne font-bold">₦{Number(p.amount).toLocaleString()}</div>
+                            <Badge status={p.paymentStatus} />
+                          </div>
+                        </div>
+
+                        {/* Actions for pending payments */}
+                        {isPending && (
+                          <div className="mt-3 pt-3 flex gap-2" style={{ borderTop: '1px solid rgba(255,255,255,.06)' }}>
+                            <p className="text-xs text-muted flex-1 self-center">This payment was not completed.</p>
+                            <button
+                              onClick={async () => {
+                                if (!confirm('Delete this pending payment?')) return
+                                try {
+                                  await paymentsApi.deletePending(p.id)
+                                  setPayments(prev => prev.filter(x => x.id !== p.id))
+                                } catch (e: any) {
+                                  alert(e.response?.data?.message || 'Could not delete payment')
+                                }
+                              }}
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:brightness-110"
+                              style={{ background: 'rgba(232,69,69,.15)', color: '#E84545', border: '1px solid rgba(232,69,69,.3)' }}>
+                              🗑 Delete
+                            </button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const res = await paymentsApi.retry(p.id)
+                                  const url = res.data?.data?.authorizationUrl || res.data?.authorizationUrl
+                                  if (url) {
+                                    // Remove old pending record from list — new one will appear after success
+                                    setPayments(prev => prev.filter(x => x.id !== p.id))
+                                    window.location.href = url
+                                  } else {
+                                    alert('Could not get payment link. Please try again.')
+                                  }
+                                } catch (e: any) {
+                                  alert(e.response?.data?.message || 'Could not retry payment')
+                                }
+                              }}
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:brightness-110"
+                              style={{ background: 'rgba(244,166,35,.15)', color: '#F4A623', border: '1px solid rgba(244,166,35,.3)' }}>
+                              ↺ Retry
+                            </button>
+                          </div>
+                        )}
                       </div>
-                      <div className="text-right shrink-0">
-                        <div className="font-syne font-bold">₦{Number(p.amount).toLocaleString()}</div>
-                        <Badge status={p.paymentStatus} />
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>

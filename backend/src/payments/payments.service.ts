@@ -109,4 +109,28 @@ export class PaymentsService {
   async getHistory(userId: string) {
     return this.paymentRepo.find({ where: { userId }, order: { createdAt: 'DESC' } });
   }
+
+  async deletePending(paymentId: string, userId: string) {
+    const payment = await this.paymentRepo.findOne({ where: { id: paymentId, userId } });
+    if (!payment) throw new NotFoundException('Payment not found');
+    if (payment.paymentStatus !== PaymentStatus.PENDING) {
+      throw new BadRequestException('Only pending payments can be deleted');
+    }
+    await this.paymentRepo.delete(paymentId);
+    return { message: 'Payment deleted', id: paymentId };
+  }
+
+  async retry(paymentId: string, userId: string) {
+    const payment = await this.paymentRepo.findOne({ where: { id: paymentId, userId } });
+    if (!payment) throw new NotFoundException('Payment not found');
+    if (payment.paymentStatus !== PaymentStatus.PENDING) {
+      throw new BadRequestException('Only pending payments can be retried');
+    }
+    // Create a fresh Paystack session for the same policy + amount
+    return this.create(userId, {
+      policyId: payment.policyId,
+      amount: Number(payment.amount),
+      currency: payment.currency || 'NGN',
+    });
+  }
 }

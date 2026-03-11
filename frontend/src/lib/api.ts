@@ -72,6 +72,8 @@ export const paymentsApi = {
   create: (data: any) => api.post('/payments/create', data),
   verify: (ref: string) => api.get(`/payments/verify/${ref}`),
   getHistory: () => api.get('/payments/history'),
+  deletePending: (id: string) => api.delete(`/payments/${id}`),
+  retry: (id: string) => api.post(`/payments/${id}/retry`),
 }
 
 // ── Claims ────────────────────────────────────────────────────

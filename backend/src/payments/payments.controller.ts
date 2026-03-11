@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Headers, Req, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Body, Headers, Req, Param, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
@@ -36,5 +36,21 @@ export class PaymentsController {
   @ApiBearerAuth('JWT')
   getHistory(@CurrentUser('id') userId: string) {
     return this.paymentsService.getHistory(userId);
+  }
+
+  @Delete(':id')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth('JWT')
+  @ApiOperation({ summary: 'Delete a pending payment' })
+  deletePending(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.paymentsService.deletePending(id, userId);
+  }
+
+  @Post(':id/retry')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth('JWT')
+  @ApiOperation({ summary: 'Retry a pending payment — returns a fresh Paystack checkout URL' })
+  retry(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.paymentsService.retry(id, userId);
   }
 }
