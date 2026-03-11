@@ -291,6 +291,7 @@ export default function CoveragePage() {
         </div>
 
 
+        {loadingProducts ? (
           <div className="flex flex-col items-center py-16 gap-4">
             <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
             <p className="text-muted text-sm">Analysing your profile and matching products…</p>

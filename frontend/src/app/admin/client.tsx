@@ -600,6 +600,7 @@ function ClaimsTab({ store, token, loading, toast, reload }: any) {
           )}
 
 
+          {(selected.status === 'submitted' || selected.status === 'under_review') && (
             <>
               <Field label="Decision Note (visible to customer)" value={note} onChange={setNote} textarea
                 placeholder="Provide context for your decision…" rows={3} />
