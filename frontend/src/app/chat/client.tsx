@@ -48,8 +48,8 @@ export default function ChatPage() {
     try {
       const res = await chatApi.send(msg, sessionId)
       const reply = res.data?.data?.message || res.data?.message
-      const finalReply = (reply && reply.length > 80 && !reply.includes("I'm here to help with all your insurance"))
-        ? reply : getLocalAnswer(msg)
+      // Always trust OpenAI — only fall back if completely empty
+      const finalReply = (reply && reply.trim().length > 0) ? reply : getLocalAnswer(msg)
       setMessages([...newMsgs, { role: 'assistant', text: finalReply }])
     } catch {
       setMessages([...newMsgs, { role: 'assistant', text: getLocalAnswer(msg) }])

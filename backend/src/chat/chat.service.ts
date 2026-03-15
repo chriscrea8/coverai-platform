@@ -122,7 +122,13 @@ YOUR STYLE:
 INSTEAD OF: "Comprehensive motor insurance provides coverage for..."
 SAY: "This cover protects your car if it's stolen, damaged in an accident, or catches fire 🚗"
 
-Keep responses under 200 words unless comparing. Use bullet points.${contextStr}${productsStr}${intentGuidance}
+Keep responses under 200 words unless comparing. Use bullet points.
+
+HANDLE THESE QUESTIONS WELL:
+- "What can you do?" / "What do you do?" → List your capabilities clearly: explain insurance, recommend products, compare options, check eligibility, guide claims, connect with insurers
+- "Hi" / "Hello" → Greet warmly and briefly explain you're ARIA, AI insurance guide, ask what they need help with
+- "Who are you?" → You are ARIA, AI Insurance Assistant for CoverAI, built for Nigeria
+- Any greeting → Be warm and immediately ask how you can help with their insurance needs${contextStr}${productsStr}${intentGuidance}
 
 LEAD CAPTURE: If a user gives you their name + phone number, warmly acknowledge and say: "Perfect! I've noted your details. A specialist will reach out within 24 hours to help you get the best deal 🎉"
 
@@ -160,6 +166,10 @@ Never make up prices — only use ranges from the product database above.`;
       const completion = await this.openai.chat.completions.create({ model, messages, max_tokens: 800, temperature: 0.7 });
       assistantMessage = completion.choices[0].message.content || '';
       tokensUsed = completion.usage?.total_tokens;
+      // If OpenAI returns empty for any reason, use intelligent fallback
+      if (!assistantMessage.trim()) {
+        assistantMessage = this.getFallbackResponse(dto.message);
+      }
     } catch (error) {
       this.logger.error('OpenAI API error', error);
       assistantMessage = this.getFallbackResponse(dto.message);
@@ -264,9 +274,14 @@ Never make up prices — only use ranges from the product database above.`;
 
   private getFallbackResponse(message: string): string {
     const m = message.toLowerCase();
+    if (m.includes('what can you do') || m.includes('what do you do') || m.includes('help') || m.includes('capabilities')) {
+      return 'Here\'s what I can help you with 🛡️:\n\n✅ *Explain insurance* in plain language\n✅ *Recommend products* for your business or personal needs\n✅ *Compare options* — motor, health, life, property\n✅ *Check eligibility* for different insurance types\n✅ *Guide you through claims* step by step\n✅ *Connect you with insurers* for the best rates\n\nWhat would you like to start with? Just ask!';
+    }
     if (m.includes('claim')) return 'To file a claim: Dashboard → Claims → New Claim. You\'ll need photos and your policy number. Our team reviews in 5–7 working days. 📋';
     if (m.includes('motor') || m.includes('car')) return 'For motor insurance 🚗:\n\n✅ *Third Party* — legal minimum, covers damage to others (₦5k–₦15k/yr)\n✅ *Comprehensive* — covers your car too (2–5% of car value/yr)\n\nWant to compare options?';
     if (m.includes('business') || m.includes('sme')) return 'For your business 🏪:\n\n1. Fire & Burglary — protects stock\n2. Public Liability — covers customer injuries\n3. Business Interruption — covers lost income\n\nWant the best rates for your business type?';
-    return 'I\'m ARIA, your insurance guide 🛡️ Ask me anything — I\'ll explain it simply. What would you like to know?';
+    if (m.includes('health') || m.includes('medical')) return 'Health insurance covers your medical bills so you don\'t pay out of pocket 🏥\n\nOptions in Nigeria:\n- *HMO plans* — monthly premium, access to hospital network\n- *Individual health cover* — pay per treatment up to a limit\n\nCosts from ₦30,000/year. Want me to find the best plan for you?';
+    if (m.includes('life')) return 'Life insurance pays your family a lump sum if you die 🛡️\n\nA simple rule: get *10x your annual income* as cover.\n\nIf you earn ₦2m/year → aim for ₦20m cover.\n\nTerm life starts from ₦30,000/year. Want to know more?';
+    return 'I\'m ARIA, your AI insurance guide for Nigeria 🇳🇬\n\nI can help you:\n- Find the right insurance for your needs\n- Explain any policy in plain language\n- Guide you through filing a claim\n- Connect you with the best insurers\n\nWhat would you like to know?';
   }
 }
