@@ -89,6 +89,19 @@ export const chatApi = {
   getHistory: (sessionId?: string) => api.get('/chat/history', { params: { sessionId } }),
 }
 
+
+export const compareApi = {
+  byCategory: (category: string, limit = 5) => api.get('/chat/compare', { params: { category, limit } }),
+  checkEligibility: (data: { insuranceType: string; location: string; age?: number; hasCar?: boolean; hasBusiness?: boolean }) =>
+    api.post('/chat/eligibility', data),
+}
+
+export const leadsApi = {
+  create: (data: { insuranceType: string; name?: string; phone?: string; location?: string; notes?: string }) =>
+    api.post('/leads', data),
+  mine: () => api.get('/leads/mine'),
+}
+
 // ── SME ───────────────────────────────────────────────────────
 export const smeApi = {
   create: (data: any) => api.post('/sme/create', data),

@@ -118,6 +118,69 @@ export class AutoMigrationService implements OnApplicationBootstrap {
       END $$
     `).catch(() => {});
 
+    // 25002500 9. Leads table 250025002500250025002500250025002500250025002500250025002500250025002500250025002500250025002500250025002500250025002500250025002500250025002500250025002500250025002500250025002500
+    await q(`
+      CREATE TABLE IF NOT EXISTS leads (
+        id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id     UUID,
+        name        VARCHAR(255),
+        phone       VARCHAR(50),
+        email       VARCHAR(255),
+        location    VARCHAR(100),
+        insurance_type VARCHAR(100) NOT NULL DEFAULT 'general',
+        product_id  UUID,
+        provider_id UUID,
+        notes       TEXT,
+        metadata    JSONB DEFAULT '{}',
+        source      VARCHAR(50) DEFAULT 'web',
+        session_id  VARCHAR(255),
+        status      VARCHAR(50) DEFAULT 'new',
+        routed_to   VARCHAR(255),
+        routed_at   TIMESTAMPTZ,
+        created_at  TIMESTAMPTZ DEFAULT NOW(),
+        updated_at  TIMESTAMPTZ DEFAULT NOW()
+      )
+    `).catch(() => {});
+    await q(`CREATE INDEX IF NOT EXISTS idx_leads_user_id ON leads(user_id)`).catch(() => {});
+    await q(`CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status)`).catch(() => {});
+    await q(`CREATE INDEX IF NOT EXISTS idx_leads_source ON leads(source)`).catch(() => {});
+
+    // 25002500 10. Insurance products: ensure columns 25002500250025002500250025002500250025002500250025002500250025002500250025002500250025002500250025002500250025002500
+    await q(`ALTER TABLE insurance_products ADD COLUMN IF NOT EXISTS eligibility_rules JSONB DEFAULT '{}'`).catch(() => {});
+    await q(`ALTER TABLE insurance_products ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}'`).catch(() => {});
+
+
+    // ── 9. Leads table ────────────────────────────────────────────────────────
+    await q(`
+      CREATE TABLE IF NOT EXISTS leads (
+        id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id     UUID,
+        name        VARCHAR(255),
+        phone       VARCHAR(50),
+        email       VARCHAR(255),
+        location    VARCHAR(100),
+        insurance_type VARCHAR(100) NOT NULL DEFAULT 'general',
+        product_id  UUID,
+        provider_id UUID,
+        notes       TEXT,
+        metadata    JSONB DEFAULT '{}',
+        source      VARCHAR(50) DEFAULT 'web',
+        session_id  VARCHAR(255),
+        status      VARCHAR(50) DEFAULT 'new',
+        routed_to   VARCHAR(255),
+        routed_at   TIMESTAMPTZ,
+        created_at  TIMESTAMPTZ DEFAULT NOW(),
+        updated_at  TIMESTAMPTZ DEFAULT NOW()
+      )
+    `).catch(() => {});
+    await q(`CREATE INDEX IF NOT EXISTS idx_leads_user_id ON leads(user_id)`).catch(() => {});
+    await q(`CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status)`).catch(() => {});
+    await q(`CREATE INDEX IF NOT EXISTS idx_leads_source ON leads(source)`).catch(() => {});
+
+    // ── 10. Insurance products: ensure columns ────────────────────────────────
+    await q(`ALTER TABLE insurance_products ADD COLUMN IF NOT EXISTS eligibility_rules JSONB DEFAULT '{}'`).catch(() => {});
+    await q(`ALTER TABLE insurance_products ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}'`).catch(() => {});
+
     this.logger.log('All migration steps executed');
   }
 }

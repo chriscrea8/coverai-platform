@@ -24,6 +24,8 @@ import { FilesModule } from './files/files.module';
 import { HealthModule } from './health/health.module';
 import { RecommendationsModule } from './recommendations/recommendations.module';
 import { DatabaseModule } from './database/database.module';
+import { LeadsModule } from './leads/leads.module';
+import { WhatsAppModule } from './whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -87,6 +89,8 @@ import { DatabaseModule } from './database/database.module';
     FilesModule,
     RecommendationsModule,
     DatabaseModule,
+    LeadsModule,
+    WhatsAppModule,
   ],
 })
 export class AppModule {}

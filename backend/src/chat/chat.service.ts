@@ -6,24 +6,62 @@ import OpenAI from 'openai';
 import { v4 as uuidv4 } from 'uuid';
 import { ChatLog } from './chat-log.entity';
 import { ChatDto } from './chat.dto';
+import { InsuranceProduct } from '../insurance-products/insurance-product.entity';
+import { LeadsService } from '../leads/leads.service';
 
-const SYSTEM_PROMPT = `You are ARIA, an AI Insurance Assistant for CoverAI — an InsurTech platform operating in Nigeria and across Africa.
+const INTENT_PATTERNS = {
+  purchase: /\b(buy|purchase|get covered|start a policy|sign up|enrol|take out|i want|interested in|how do i get)\b/i,
+  claim: /\b(claim|file a claim|submit claim|how to claim|report accident|report loss)\b/i,
+  compare: /\b(compare|comparison|vs|versus|difference between|which is better|options|alternatives)\b/i,
+  eligibility: /\b(eligible|qualify|can i get|do i qualify|requirements|criteria|conditions)\b/i,
+  pricing: /\b(cost|price|how much|premium|afford|cheap|expensive|rate)\b/i,
+  education: /\b(what is|explain|meaning of|define|tell me about|how does|understand)\b/i,
+};
 
-Your role:
-- Explain insurance products clearly in simple, jargon-free language
-- Help users understand their policy terms and coverage
-- Guide users through the claims process
-- Recommend appropriate insurance products for SMEs and individuals
-- Answer questions about Nigerian insurance regulations (NAICOM)
+function detectIntent(message: string): string[] {
+  return Object.entries(INTENT_PATTERNS)
+    .filter(([, pattern]) => pattern.test(message))
+    .map(([intent]) => intent);
+}
 
-Important context:
-- You operate in the Nigerian market, so reference naira (₦), local regulations, and African market conditions
-- Common insurance types: Motor (Third Party & Comprehensive), Fire & Burglary, Marine, Health, Life, Business Owner's Policy (BOP)
-- Always be helpful, friendly, and concise
-- If you don't know something specific, say so and direct the user to human support
-- Never provide specific legal or financial advice — always recommend consulting a professional
+const sessionContext = new Map<string, Record<string, any>>();
 
-Always respond in English. Be conversational but professional.`;
+function getContext(sessionId: string): Record<string, any> {
+  return sessionContext.get(sessionId) || {};
+}
+
+function updateContext(sessionId: string, updates: Record<string, any>) {
+  const existing = sessionContext.get(sessionId) || {};
+  sessionContext.set(sessionId, { ...existing, ...updates, updatedAt: new Date() });
+}
+
+function extractContextFromMessage(message: string): Record<string, any> {
+  const ctx: Record<string, any> = {};
+  const m = message.toLowerCase();
+  if (/\b(shop|store|market stall|retail|supermarket)\b/.test(m)) ctx.businessType = 'retail';
+  if (/\b(restaurant|eatery|food|canteen|kitchen)\b/.test(m)) ctx.businessType = 'restaurant';
+  if (/\b(transport|logistics|haulage|truck)\b/.test(m)) ctx.businessType = 'transport';
+  if (/\b(tech|software|it company|startup)\b/.test(m)) ctx.businessType = 'tech';
+  const ageMatch = m.match(/\b(\d{1,2})\s*years?\s*old\b/);
+  if (ageMatch) ctx.age = parseInt(ageMatch[1]);
+  if (/\b(i have a car|i drive|my vehicle|my car)\b/.test(m)) ctx.hasVehicle = true;
+  if (/\b(i run|i own|my business|my company|my shop)\b/.test(m)) ctx.hasBusiness = true;
+  if (/\b(staff|employees|workers|team)\b/.test(m)) ctx.hasEmployees = true;
+  const locationMatch = m.match(/\b(lagos|abuja|port.?harcourt|ph|kano|ibadan|enugu|aba|benin)\b/);
+  if (locationMatch) ctx.location = locationMatch[1];
+  if (/\b(motor|car|vehicle|auto)\b/.test(m)) ctx.interestedIn = 'motor';
+  if (/\b(health|medical|hospital)\b/.test(m)) ctx.interestedIn = 'health';
+  if (/\b(life|death|burial)\b/.test(m)) ctx.interestedIn = 'life';
+  if (/\b(fire|burglary|property)\b/.test(m)) ctx.interestedIn = 'property';
+  if (/\b(business|sme|company|enterprise)\b/.test(m)) ctx.interestedIn = 'business';
+  // Capture name patterns like "my name is X" or "I am X"
+  const nameMatch = message.match(/(?:my name is|i am|i'm|call me)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
+  if (nameMatch) ctx.name = nameMatch[1];
+  // Phone number capture
+  const phoneMatch = message.match(/(?:\+?234|0)?[789][01]\d{8}/);
+  if (phoneMatch) ctx.phone = phoneMatch[0];
+  return ctx;
+}
 
 @Injectable()
 export class ChatService {
@@ -32,94 +70,203 @@ export class ChatService {
 
   constructor(
     @InjectRepository(ChatLog) private readonly chatLogRepo: Repository<ChatLog>,
+    @InjectRepository(InsuranceProduct) private readonly productRepo: Repository<InsuranceProduct>,
     private readonly configService: ConfigService,
+    private readonly leadsService: LeadsService,
   ) {
-    this.openai = new OpenAI({
-      apiKey: configService.get('openai.apiKey'),
-    });
+    this.openai = new OpenAI({ apiKey: configService.get('openai.apiKey') });
   }
 
-  async chat(userId: string | null, dto: ChatDto) {
-    const sessionId = dto.sessionId || uuidv4();
-    const model = this.configService.get('openai.model', 'gpt-4-turbo-preview');
+  private async getRelevantProducts(message: string, context: Record<string, any>): Promise<InsuranceProduct[]> {
+    try {
+      const m = message.toLowerCase();
+      const where: any = { status: 'active' };
+      if (/\b(motor|car|vehicle|third.?party|comprehensive)\b/.test(m)) where.category = 'motor';
+      else if (/\b(health|medical|hospital|hmo)\b/.test(m)) where.category = 'health';
+      else if (/\b(life|death|life insurance)\b/.test(m)) where.category = 'life';
+      else if (/\b(fire|burglary|property|shop)\b/.test(m)) where.category = 'property';
+      else if (/\b(business|sme|bop|liability)\b/.test(m) || context.interestedIn === 'business') where.isSmeProduct = true;
+      else if (context.interestedIn) where.category = context.interestedIn;
+      return await this.productRepo.find({ where, take: 5, order: { createdAt: 'DESC' } });
+    } catch { return []; }
+  }
 
-    // Fetch conversation history for context (last 10 messages)
-    const history = await this.chatLogRepo.find({
-      where: { sessionId },
-      order: { timestamp: 'ASC' },
-      take: 10,
-    });
+  private formatProductsForPrompt(products: InsuranceProduct[]): string {
+    if (!products.length) return '';
+    return `\n\n## AVAILABLE PRODUCTS FROM OUR DATABASE:\n` +
+      products.map(p => `**${p.productName}** | ₦${p.premiumMin?.toLocaleString() || '?'}–₦${p.premiumMax?.toLocaleString() || '?'}/yr | ${p.description}`).join('\n');
+  }
+
+  private buildSystemPrompt(context: Record<string, any>, products: InsuranceProduct[], intents: string[]): string {
+    const contextStr = Object.keys(context).filter(k => k !== 'updatedAt').length
+      ? `\n\n## USER CONTEXT (remember this throughout the conversation):\n${JSON.stringify(context, null, 2)}`
+      : '';
+    const productsStr = this.formatProductsForPrompt(products);
+    let intentGuidance = '';
+    if (intents.includes('purchase')) {
+      intentGuidance = `\n\n## ACTION: User shows PURCHASE INTENT. After your explanation, say: "To get you connected with the right insurer, could you share your name and phone number? 📞"`;
+    } else if (intents.includes('compare')) {
+      intentGuidance = `\n\n## ACTION: User wants COMPARISON. Show products in a clear format: Name | Coverage | Price | Best For`;
+    } else if (intents.includes('eligibility')) {
+      intentGuidance = `\n\n## ACTION: User wants ELIGIBILITY CHECK. Ask one question at a time: insurance type → location → age → car ownership → business ownership`;
+    }
+    return `You are ARIA, an AI Insurance Assistant for CoverAI — built for Nigeria and Africa.
+
+YOUR STYLE:
+- Friendly, warm, like a knowledgeable friend
+- Simple Nigerian English — no jargon
+- Short sentences, practical examples
+- Reference naira (₦), NAICOM, FRSC where relevant
+- Use ✅ ❌ 🚗 🛡️ 💰 emojis naturally
+
+INSTEAD OF: "Comprehensive motor insurance provides coverage for..."
+SAY: "This cover protects your car if it's stolen, damaged in an accident, or catches fire 🚗"
+
+Keep responses under 200 words unless comparing. Use bullet points.${contextStr}${productsStr}${intentGuidance}
+
+LEAD CAPTURE: If a user gives you their name + phone number, warmly acknowledge and say: "Perfect! I've noted your details. A specialist will reach out within 24 hours to help you get the best deal 🎉"
+
+Never make up prices — only use ranges from the product database above.`;
+  }
+
+  async chat(userId: string | null, dto: ChatDto & { source?: string; userPhone?: string; userName?: string }) {
+    const sessionId = dto.sessionId || uuidv4();
+    const model = this.configService.get('openai.model', 'gpt-4o-mini');
+
+    const newContext = extractContextFromMessage(dto.message);
+    updateContext(sessionId, { ...newContext, ...(userId ? { userId } : {}), ...(dto.userPhone ? { phone: dto.userPhone } : {}), ...(dto.userName ? { name: dto.userName } : {}) });
+    const context = getContext(sessionId);
+    const intents = detectIntent(dto.message);
+    const products = await this.getRelevantProducts(dto.message, context);
+    const systemPrompt = this.buildSystemPrompt(context, products, intents);
+
+    const history = await this.chatLogRepo.find({ where: { sessionId }, order: { timestamp: 'ASC' }, take: 20 });
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-      { role: 'system', content: SYSTEM_PROMPT },
-      ...history.map(log => ({
-        role: log.role as 'user' | 'assistant',
-        content: log.message,
-      })),
+      { role: 'system', content: systemPrompt },
+      ...history.map(log => ({ role: log.role as 'user' | 'assistant', content: log.message })),
       { role: 'user', content: dto.message },
     ];
 
-    // Save user message
     await this.chatLogRepo.save(this.chatLogRepo.create({
-      userId,
-      sessionId,
-      role: 'user',
-      message: dto.message,
-      modelUsed: model,
+      userId, sessionId, role: 'user', message: dto.message, modelUsed: model,
+      metadata: { intents, contextSnapshot: context },
     }));
 
+    let assistantMessage = '';
+    let tokensUsed: number | undefined;
+
     try {
-      const completion = await this.openai.chat.completions.create({
-        model,
-        messages,
-        max_tokens: 1000,
-        temperature: 0.7,
-      });
-
-      const assistantMessage = completion.choices[0].message.content;
-      const tokensUsed = completion.usage?.total_tokens;
-
-      // Save assistant response
-      await this.chatLogRepo.save(this.chatLogRepo.create({
-        userId,
-        sessionId,
-        role: 'assistant',
-        message: assistantMessage,
-        tokensUsed,
-        modelUsed: model,
-      }));
-
-      return {
-        message: assistantMessage,
-        sessionId,
-        tokensUsed,
-      };
+      const completion = await this.openai.chat.completions.create({ model, messages, max_tokens: 800, temperature: 0.7 });
+      assistantMessage = completion.choices[0].message.content || '';
+      tokensUsed = completion.usage?.total_tokens;
     } catch (error) {
       this.logger.error('OpenAI API error', error);
-      // Graceful fallback
-      const fallback = this.getFallbackResponse(dto.message);
-      await this.chatLogRepo.save(this.chatLogRepo.create({
-        userId, sessionId, role: 'assistant', message: fallback, modelUsed: 'fallback',
-      }));
-      return { message: fallback, sessionId };
+      assistantMessage = this.getFallbackResponse(dto.message);
     }
+
+    await this.chatLogRepo.save(this.chatLogRepo.create({
+      userId, sessionId, role: 'assistant', message: assistantMessage, tokensUsed, modelUsed: model,
+      metadata: { intents, productsShown: products.map(p => p.id) },
+    }));
+
+    // Auto-create lead on purchase intent
+    let leadCreated = false;
+    if (intents.includes('purchase')) {
+      try {
+        await this.leadsService.create({
+          userId: userId || undefined,
+          name: context.name,
+          phone: context.phone || dto.userPhone,
+          location: context.location,
+          insuranceType: context.interestedIn || 'general',
+          notes: `Chat purchase intent. Message: "${dto.message.substring(0, 200)}"`,
+          metadata: context,
+          source: (dto as any).source || 'web',
+          sessionId,
+        });
+        leadCreated = true;
+      } catch (e) { this.logger.warn('Lead creation failed', e); }
+    }
+
+    // Also capture lead when phone number is shared
+    if (context.phone && !leadCreated) {
+      try {
+        await this.leadsService.create({
+          userId: userId || undefined,
+          name: context.name,
+          phone: context.phone,
+          location: context.location,
+          insuranceType: context.interestedIn || 'general',
+          notes: `Contact info shared in chat. Session: ${sessionId}`,
+          metadata: context,
+          source: (dto as any).source || 'web',
+          sessionId,
+        });
+        leadCreated = true;
+      } catch (e) { this.logger.warn('Lead creation failed', e); }
+    }
+
+    return {
+      message: assistantMessage,
+      sessionId,
+      tokensUsed,
+      intents,
+      leadCreated,
+      suggestedProducts: products.slice(0, 3).map(p => ({
+        id: p.id,
+        name: p.productName,
+        category: p.category,
+        premiumMin: p.premiumMin,
+        premiumMax: p.premiumMax,
+      })),
+    };
+  }
+
+  async checkEligibility(answers: { insuranceType: string; location: string; age?: number; hasCar?: boolean; hasBusiness?: boolean }) {
+    const where: any = { status: 'active' };
+    if (answers.insuranceType === 'motor') where.category = 'motor';
+    else if (answers.insuranceType === 'health') where.category = 'health';
+    else if (answers.insuranceType === 'business') where.isSmeProduct = true;
+    else if (answers.insuranceType === 'property') where.category = 'property';
+    const products = await this.productRepo.find({ where, take: 10 });
+    const eligible = products.filter(p => {
+      const rules = p.eligibilityRules || {};
+      if (rules.minAge && answers.age && answers.age < rules.minAge) return false;
+      if (rules.maxAge && answers.age && answers.age > rules.maxAge) return false;
+      if (rules.requiresCar && !answers.hasCar) return false;
+      if (rules.requiresBusiness && !answers.hasBusiness) return false;
+      return true;
+    });
+    return {
+      eligible: eligible.length > 0,
+      products: eligible.map(p => ({ id: p.id, name: p.productName, category: p.category, premiumMin: p.premiumMin, premiumMax: p.premiumMax, description: p.description })),
+      message: eligible.length > 0 ? `Great news! You qualify for ${eligible.length} product${eligible.length > 1 ? 's' : ''}.` : 'We\'ll find the right product for you — let our team help!',
+    };
+  }
+
+  async compareProducts(category: string, limit = 5) {
+    const products = await this.productRepo.find({ where: { status: 'active', category }, take: limit, order: { premiumMin: 'ASC' } });
+    return products.map(p => ({ id: p.id, name: p.productName, category: p.category, premiumMin: p.premiumMin, premiumMax: p.premiumMax, description: p.description, coverageDetails: p.coverageDetails, isSmeProduct: p.isSmeProduct, tags: p.tags }));
+  }
+
+  async handleWhatsApp(from: string, message: string, sessionId: string) {
+    const response = await this.chat(null, { message, sessionId, source: 'whatsapp', userPhone: from } as any);
+    const plainText = response.message.replace(/\*\*(.*?)\*\*/g, '*$1*').replace(/#{1,3}\s/g, '').replace(/`/g, '');
+    return { text: plainText, sessionId: response.sessionId, leadCreated: response.leadCreated };
   }
 
   async getHistory(userId: string, sessionId?: string) {
     const where: any = { userId };
     if (sessionId) where.sessionId = sessionId;
-    return this.chatLogRepo.find({
-      where,
-      order: { timestamp: 'ASC' },
-      take: 50,
-    });
+    return this.chatLogRepo.find({ where, order: { timestamp: 'ASC' }, take: 100 });
   }
 
   private getFallbackResponse(message: string): string {
     const m = message.toLowerCase();
-    if (m.includes('claim')) return 'To file a claim, go to the Claims section in your dashboard. You\'ll need your policy number, incident details, and evidence photos.';
-    if (m.includes('motor') || m.includes('car')) return 'For motor insurance in Nigeria, Third Party is the minimum legal requirement. Comprehensive cover protects your own vehicle too. Prices typically range from ₦30,000–₦150,000/year.';
-    if (m.includes('business') || m.includes('sme')) return 'For SME insurance, we recommend a Business Owner\'s Policy (BOP) covering property, liability, and theft. Get a quote through our Policy Finder.';
-    return 'I\'m here to help with all your insurance questions! You can ask about policy types, claims, coverage, or get a personalized recommendation.';
+    if (m.includes('claim')) return 'To file a claim: Dashboard → Claims → New Claim. You\'ll need photos and your policy number. Our team reviews in 5–7 working days. 📋';
+    if (m.includes('motor') || m.includes('car')) return 'For motor insurance 🚗:\n\n✅ *Third Party* — legal minimum, covers damage to others (₦5k–₦15k/yr)\n✅ *Comprehensive* — covers your car too (2–5% of car value/yr)\n\nWant to compare options?';
+    if (m.includes('business') || m.includes('sme')) return 'For your business 🏪:\n\n1. Fire & Burglary — protects stock\n2. Public Liability — covers customer injuries\n3. Business Interruption — covers lost income\n\nWant the best rates for your business type?';
+    return 'I\'m ARIA, your insurance guide 🛡️ Ask me anything — I\'ll explain it simply. What would you like to know?';
   }
 }

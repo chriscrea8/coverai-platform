@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import ARIAWidget from '@/components/ARIAWidget'
 
 export const viewport = {
   width: 'device-width',
@@ -24,7 +25,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="font-dm bg-ink text-white antialiased">{children}</body>
+      <body className="font-dm bg-ink text-white antialiased">
+        {children}
+        <ARIAWidget />
+      </body>
     </html>
   )
 }
