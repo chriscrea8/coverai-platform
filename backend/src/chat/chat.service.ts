@@ -137,7 +137,7 @@ Never make up prices — only use ranges from the product database above.`;
 
   async chat(userId: string | null, dto: ChatDto & { source?: string; userPhone?: string; userName?: string }) {
     const sessionId = dto.sessionId || uuidv4();
-    const model = this.configService.get('openai.model', 'gpt-4o-mini');
+    const model = 'gpt-4o-mini'; // hardcoded - env var was unreliable
 
     const newContext = extractContextFromMessage(dto.message);
     updateContext(sessionId, { ...newContext, ...(userId ? { userId } : {}), ...(dto.userPhone ? { phone: dto.userPhone } : {}), ...(dto.userName ? { name: dto.userName } : {}) });
