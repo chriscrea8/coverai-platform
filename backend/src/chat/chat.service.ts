@@ -199,16 +199,18 @@ Never make up prices — only use ranges from the product database above.`;
       } catch (e) { this.logger.warn('Lead creation failed', e); }
     }
 
-    // Also capture lead when phone number is shared
-    if (context.phone && !leadCreated) {
+    // Only capture lead when user explicitly types their own phone number in the message
+    // (not from WhatsApp sender metadata which is always present)
+    const phoneInMessage = extractContextFromMessage(dto.message).phone;
+    if (phoneInMessage && !leadCreated) {
       try {
         await this.leadsService.create({
           userId: userId || undefined,
           name: context.name,
-          phone: context.phone,
+          phone: phoneInMessage,
           location: context.location,
           insuranceType: context.interestedIn || 'general',
-          notes: `Contact info shared in chat. Session: ${sessionId}`,
+          notes: `Phone number shared in chat. Session: ${sessionId}`,
           metadata: context,
           source: (dto as any).source || 'web',
           sessionId,
