@@ -26,6 +26,8 @@ import { RecommendationsModule } from './recommendations/recommendations.module'
 import { DatabaseModule } from './database/database.module';
 import { LeadsModule } from './leads/leads.module';
 import { WhatsAppModule } from './whatsapp/whatsapp.module';
+import { KnowledgeBaseModule } from './knowledge/knowledge-base.module';
+import { GroupPoliciesModule } from './group-policies/group-policies.module';
 
 @Module({
   imports: [
@@ -91,6 +93,8 @@ import { WhatsAppModule } from './whatsapp/whatsapp.module';
     DatabaseModule,
     LeadsModule,
     WhatsAppModule,
+    KnowledgeBaseModule,
+    GroupPoliciesModule,
   ],
 })
 export class AppModule {}

@@ -24,6 +24,7 @@ const NAV_ITEMS = [
   { id: 'claims',    icon: '🛡️', label: 'Claims'         },
   { id: 'payments',  icon: '💳', label: 'Payments'       },
   { id: 'recommended', icon: '✨', label: 'For You'      },
+  { id: 'group', icon: '👥', label: 'Group Policies' },
 ]
 
 const STATUS_COLOR: Record<string, string> = {
@@ -50,6 +51,7 @@ function DashboardInner() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [policies, setPolicies] = useState<any[]>([])
   const [claims, setClaims]     = useState<any[]>([])
+  const [groupPolicies, setGroupPolicies] = useState<any[]>([])
   const [payments, setPayments] = useState<any[]>([])
   const [recommendations, setRecommendations] = useState<any[]>([])
   const [loading, setLoading]   = useState(true)
@@ -135,6 +137,11 @@ function DashboardInner() {
       ])
       if (p.status === 'fulfilled') setPolicies(p.value.data.data || p.value.data || [])
       if (c.status === 'fulfilled') setClaims(c.value.data.data || c.value.data || [])
+      // Fetch group policies
+      try {
+        const gpRes = await api.get('/group-policies')
+        setGroupPolicies(gpRes.data.data || gpRes.data || [])
+      } catch {}
       if (pay.status === 'fulfilled') setPayments(pay.value.data.data || pay.value.data || [])
     } catch {}
     setLoading(false)

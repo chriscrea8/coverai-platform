@@ -181,6 +181,51 @@ export class AutoMigrationService implements OnApplicationBootstrap {
     await q(`ALTER TABLE insurance_products ADD COLUMN IF NOT EXISTS eligibility_rules JSONB DEFAULT '{}'`).catch(() => {});
     await q(`ALTER TABLE insurance_products ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}'`).catch(() => {});
 
+
+    // ── 11. Knowledge Base table ──────────────────────────────────────────────
+    await q(`
+      CREATE TABLE IF NOT EXISTS knowledge_base (
+        id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        category     VARCHAR(50) NOT NULL DEFAULT 'faq',
+        subcategory  VARCHAR(50) NOT NULL DEFAULT 'general',
+        question     TEXT NOT NULL,
+        answer       TEXT NOT NULL,
+        keywords     TEXT[] DEFAULT '{}',
+        source       VARCHAR(100),
+        is_active    BOOLEAN DEFAULT true,
+        use_count    INTEGER DEFAULT 0,
+        created_at   TIMESTAMPTZ DEFAULT NOW(),
+        updated_at   TIMESTAMPTZ DEFAULT NOW()
+      )
+    `).catch(() => {});
+    await q(`CREATE INDEX IF NOT EXISTS idx_kb_subcategory ON knowledge_base(subcategory)`).catch(() => {});
+    await q(`CREATE INDEX IF NOT EXISTS idx_kb_category ON knowledge_base(category)`).catch(() => {});
+    await q(`CREATE INDEX IF NOT EXISTS idx_kb_use_count ON knowledge_base(use_count DESC)`).catch(() => {});
+
+    // ── 12. Group Policies table ──────────────────────────────────────────────
+    await q(`
+      CREATE TABLE IF NOT EXISTS group_policies (
+        id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        owner_id         UUID NOT NULL,
+        sme_id           UUID,
+        product_id       UUID,
+        provider_id      UUID,
+        policy_name      VARCHAR(255) NOT NULL,
+        policy_type      VARCHAR(50) NOT NULL,
+        policy_number    VARCHAR(100) UNIQUE,
+        total_premium    DECIMAL(12,2) NOT NULL DEFAULT 0,
+        member_count     INTEGER DEFAULT 0,
+        status           VARCHAR(50) DEFAULT 'active',
+        start_date       DATE,
+        end_date         DATE,
+        members          JSONB DEFAULT '[]',
+        coverage_details JSONB DEFAULT '{}',
+        created_at       TIMESTAMPTZ DEFAULT NOW(),
+        updated_at       TIMESTAMPTZ DEFAULT NOW()
+      )
+    `).catch(() => {});
+    await q(`CREATE INDEX IF NOT EXISTS idx_group_policies_owner_id ON group_policies(owner_id)`).catch(() => {});
+
     this.logger.log('All migration steps executed');
   }
 }

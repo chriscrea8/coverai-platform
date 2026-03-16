@@ -214,10 +214,65 @@ function DifficultyBadge({ level }: { level: string }) {
   )
 }
 
+const BADGES = [
+  { id: 'first_read', icon: '📖', name: 'First Step', desc: 'Read your first guide', points: 10 },
+  { id: 'motor_expert', icon: '🚗', name: 'Motor Expert', desc: 'Read all Motor guides', points: 25 },
+  { id: 'business_pro', icon: '🏪', name: 'Business Pro', desc: 'Read all Business guides', points: 25 },
+  { id: 'claims_ready', icon: '📋', name: 'Claims Ready', desc: 'Read the Claims guide', points: 20 },
+  { id: 'insurance_guru', icon: '🏆', name: 'Insurance Guru', desc: 'Read 5+ guides', points: 50 },
+  { id: 'naicom_aware', icon: '⚖️', name: 'NAICOM Aware', desc: 'Read the regulations guide', points: 30 },
+]
+
+function useGamification() {
+  const [readGuides, setReadGuides] = useState<number[]>(() => {
+    try { return JSON.parse(localStorage.getItem('coverai_read_guides') || '[]') } catch { return [] }
+  })
+  const [earnedBadges, setEarnedBadges] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('coverai_badges') || '[]') } catch { return [] }
+  })
+  const [newBadge, setNewBadge] = useState<typeof BADGES[0] | null>(null)
+
+  const points = readGuides.length * 10 + earnedBadges.reduce((sum, id) => {
+    const badge = BADGES.find(b => b.id === id)
+    return sum + (badge?.points || 0)
+  }, 0)
+
+  const markRead = (guideId: number, guide: typeof GUIDES[0]) => {
+    if (readGuides.includes(guideId)) return
+    const newRead = [...readGuides, guideId]
+    setReadGuides(newRead)
+    localStorage.setItem('coverai_read_guides', JSON.stringify(newRead))
+
+    // Check badge eligibility
+    const newBadges = [...earnedBadges]
+    const checkBadge = (id: string, condition: boolean) => {
+      if (condition && !newBadges.includes(id)) {
+        newBadges.push(id)
+        const badge = BADGES.find(b => b.id === id)!
+        setNewBadge(badge)
+        setTimeout(() => setNewBadge(null), 4000)
+      }
+    }
+    checkBadge('first_read', newRead.length === 1)
+    checkBadge('insurance_guru', newRead.length >= 5)
+    checkBadge('claims_ready', guide.category === 'Claims')
+    checkBadge('motor_expert', GUIDES.filter(g => g.category === 'Motor').every(g => newRead.includes(g.id)))
+    checkBadge('business_pro', GUIDES.filter(g => g.category === 'Business').every(g => newRead.includes(g.id)))
+    checkBadge('naicom_aware', guide.title.toLowerCase().includes('naicom'))
+    if (newBadges.length > earnedBadges.length) {
+      setEarnedBadges(newBadges)
+      localStorage.setItem('coverai_badges', JSON.stringify(newBadges))
+    }
+  }
+
+  return { readGuides, earnedBadges, points, newBadge, markRead }
+}
+
 export default function LearnPage() {
   const [activeCategory, setActiveCategory] = useState('All')
   const [selectedGuide, setSelectedGuide] = useState<typeof GUIDES[0] | null>(null)
   const [expandedSections, setExpandedSections] = useState<number[]>([0])
+  const { readGuides, earnedBadges, points, newBadge, markRead } = useGamification()
 
   const filtered = activeCategory === 'All' ? GUIDES : GUIDES.filter(g => g.category === activeCategory)
 
@@ -336,6 +391,23 @@ export default function LearnPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'radial-gradient(ellipse 70% 40% at 50% 0%, rgba(26,58,143,0.2) 0%, transparent 70%), #0A0F1E', color: '#fff' }}>
+      {/* Badge earned toast */}
+      {newBadge && (
+        <div style={{
+          position: 'fixed', top: 80, right: 20, zIndex: 9999,
+          padding: '16px 20px', borderRadius: 16,
+          background: 'linear-gradient(135deg, #0D1B3E, #1A3A8F)',
+          border: '1px solid rgba(0,194,168,0.5)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+          animation: 'slideIn 0.4s ease',
+          maxWidth: 280,
+        }}>
+          <div style={{ fontSize: 32, marginBottom: 6 }}>{newBadge.icon}</div>
+          <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, marginBottom: 4 }}>Badge Earned!</div>
+          <div style={{ color: '#00C2A8', fontWeight: 700 }}>{newBadge.name}</div>
+          <div style={{ fontSize: 12, color: '#6B7FA3', marginTop: 4 }}>+{newBadge.points} points</div>
+        </div>
+      )}
       {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -368,7 +440,7 @@ export default function LearnPage() {
           </p>
 
           {/* Stats */}
-          <div style={{ display: 'flex', gap: 32, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 32, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 24 }}>
             {[
               { value: `${GUIDES.length}`, label: 'Free Guides' },
               { value: '5 min', label: 'Avg. Read Time' },
@@ -379,6 +451,44 @@ export default function LearnPage() {
                 <div style={{ fontSize: 12, color: '#6B7FA3' }}>{s.label}</div>
               </div>
             ))}
+          </div>
+
+          {/* Gamification — Progress & Badges */}
+          <div style={{ maxWidth: 600, margin: '0 auto', padding: '20px 24px', borderRadius: 16, background: 'rgba(26,58,143,0.2)', border: '1px solid rgba(26,58,143,0.3)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 15 }}>
+                🏆 Your Progress
+              </div>
+              <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 900, fontSize: 18, color: '#F4A623' }}>
+                {points} pts
+              </div>
+            </div>
+            {/* Progress bar */}
+            <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 20, height: 8, marginBottom: 14, overflow: 'hidden' }}>
+              <div style={{ width: `${Math.min((readGuides.length / GUIDES.length) * 100, 100)}%`, height: '100%', background: 'linear-gradient(90deg, #1A3A8F, #00C2A8)', borderRadius: 20, transition: 'width 0.5s ease' }} />
+            </div>
+            <div style={{ fontSize: 12, color: '#6B7FA3', marginBottom: 14 }}>
+              {readGuides.length} of {GUIDES.length} guides read
+            </div>
+            {/* Badges */}
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {BADGES.map(badge => {
+                const earned = earnedBadges.includes(badge.id)
+                return (
+                  <div key={badge.id} title={`${badge.name}: ${badge.desc} (+${badge.points} pts)`} style={{
+                    padding: '6px 12px', borderRadius: 20, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12,
+                    background: earned ? 'rgba(0,194,168,0.2)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${earned ? 'rgba(0,194,168,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                    color: earned ? '#00C2A8' : '#4A5568',
+                    filter: earned ? 'none' : 'grayscale(1)',
+                    transition: 'all 0.3s',
+                  }}>
+                    <span>{badge.icon}</span>
+                    <span style={{ fontWeight: earned ? 700 : 400 }}>{badge.name}</span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
 
@@ -404,7 +514,7 @@ export default function LearnPage() {
           {filtered.map(guide => (
             <button
               key={guide.id}
-              onClick={() => { setSelectedGuide(guide); setExpandedSections([0]) }}
+              onClick={() => { setSelectedGuide(guide); setExpandedSections([0]); markRead(guide.id, guide) }}
               style={{
                 background: 'rgba(13,27,62,0.7)', border: '1px solid rgba(255,255,255,0.08)',
                 borderRadius: 20, padding: 24, textAlign: 'left', cursor: 'pointer',
@@ -422,7 +532,7 @@ export default function LearnPage() {
                 ;(e.currentTarget as HTMLElement).style.boxShadow = 'none'
               }}
             >
-              <div style={{ fontSize: 36 }}>{guide.icon}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}><span style={{ fontSize: 36 }}>{guide.icon}</span>{readGuides.includes(guide.id) && <span style={{ fontSize: 18 }} title='Read'>✅</span>}</div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 11, color: '#6B7FA3', background: 'rgba(255,255,255,0.05)', padding: '2px 9px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.08)' }}>{guide.category}</span>
                 <DifficultyBadge level={guide.difficulty} />

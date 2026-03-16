@@ -8,6 +8,44 @@ import { ChatLog } from './chat-log.entity';
 import { ChatDto } from './chat.dto';
 import { InsuranceProduct } from '../insurance-products/insurance-product.entity';
 import { LeadsService } from '../leads/leads.service';
+import { KnowledgeBaseService } from '../knowledge/knowledge-base.service';
+
+// ── Language detection ──────────────────────────────────────────────────────
+function detectLanguage(message: string): string {
+  const m = message.toLowerCase();
+  // Pidgin patterns
+  if (/\b(wetin|abeg|na|dey|abi|sha|oga|madam|wahala|oyibo|sef|shey|don|wey|comot|chop)\b/.test(m)) return 'pidgin';
+  // Yoruba patterns
+  if (/\b(ẹ|ọ|bawo|jọwọ|pẹlẹ|ẹ jọ|iranlọwọ|bẹẹni|rara|insurance ni)\b/.test(m)) return 'yoruba';
+  // Igbo patterns
+  if (/\b(biko|gịnị|ọ dị|maka|ọ bụ|ka m|nke a|ozuzu)\b/.test(m)) return 'igbo';
+  // Hausa patterns
+  if (/\b(yaya|don allah|na gode|ina|ku|taimaka|zaka|haka)\b/.test(m)) return 'hausa';
+  return 'english';
+}
+
+function getLanguageInstruction(language: string): string {
+  switch (language) {
+    case 'pidgin':
+      return `
+
+## LANGUAGE: Respond in Nigerian Pidgin English. Use natural pidgin expressions like "e be like say", "no worry", "na so e be", "e go better". Keep it friendly and easy to understand. Mix in English for technical terms.`;
+    case 'yoruba':
+      return `
+
+## LANGUAGE: The user may prefer Yoruba. Respond primarily in English but include Yoruba greetings and phrases where natural (e.g., "E kaaro", "E kaasan", "E kaale"). Keep insurance terms in English.`;
+    case 'igbo':
+      return `
+
+## LANGUAGE: The user may prefer Igbo. Respond primarily in English but include Igbo greetings where natural (e.g., "Nnọọ", "Daalu"). Keep insurance terms in English.`;
+    case 'hausa':
+      return `
+
+## LANGUAGE: The user may prefer Hausa. Respond primarily in English but include Hausa greetings where natural (e.g., "Sannu", "Na gode"). Keep insurance terms in English.`;
+    default:
+      return '';
+  }
+}
 
 const INTENT_PATTERNS = {
   purchase: /\b(buy|purchase|get covered|start a policy|sign up|enrol|take out|i want|interested in|how do i get)\b/i,
@@ -73,6 +111,7 @@ export class ChatService {
     @InjectRepository(InsuranceProduct) private readonly productRepo: Repository<InsuranceProduct>,
     private readonly configService: ConfigService,
     private readonly leadsService: LeadsService,
+    private readonly knowledgeBaseService: KnowledgeBaseService,
   ) {
     this.openai = new OpenAI({ apiKey: configService.get('openai.apiKey') });
   }
@@ -97,7 +136,7 @@ export class ChatService {
       products.map(p => `**${p.productName}** | ₦${p.premiumMin?.toLocaleString() || '?'}–₦${p.premiumMax?.toLocaleString() || '?'}/yr | ${p.description}`).join('\n');
   }
 
-  private buildSystemPrompt(context: Record<string, any>, products: InsuranceProduct[], intents: string[]): string {
+  private buildSystemPrompt(context: Record<string, any>, products: InsuranceProduct[], intents: string[], kbContext = '', language = 'english'): string {
     const contextStr = Object.keys(context).filter(k => k !== 'updatedAt').length
       ? `\n\n## USER CONTEXT (remember this throughout the conversation):\n${JSON.stringify(context, null, 2)}`
       : '';
@@ -132,7 +171,7 @@ HANDLE THESE QUESTIONS WELL:
 
 LEAD CAPTURE: If a user gives you their name + phone number, warmly acknowledge and say: "Perfect! I've noted your details. A specialist will reach out within 24 hours to help you get the best deal 🎉"
 
-Never make up prices — only use ranges from the product database above.`;
+Never make up prices — only use ranges from the product database above.${kbContext}${getLanguageInstruction(language)}\`;
   }
 
   async chat(userId: string | null, dto: ChatDto & { source?: string; userPhone?: string; userName?: string }) {
@@ -144,7 +183,10 @@ Never make up prices — only use ranges from the product database above.`;
     const context = getContext(sessionId);
     const intents = detectIntent(dto.message);
     const products = await this.getRelevantProducts(dto.message, context);
-    const systemPrompt = this.buildSystemPrompt(context, products, intents);
+    const kbItems = await this.knowledgeBaseService.search(dto.message, 4);
+    const kbContext = this.knowledgeBaseService.formatForPrompt(kbItems);
+    const language = detectLanguage(dto.message);
+    const systemPrompt = this.buildSystemPrompt(context, products, intents, kbContext, language);
 
     const history = await this.chatLogRepo.find({ where: { sessionId }, order: { timestamp: 'ASC' }, take: 20 });
 
