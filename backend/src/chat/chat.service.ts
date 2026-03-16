@@ -171,7 +171,7 @@ HANDLE THESE QUESTIONS WELL:
 
 LEAD CAPTURE: If a user gives you their name + phone number, warmly acknowledge and say: "Perfect! I've noted your details. A specialist will reach out within 24 hours to help you get the best deal 🎉"
 
-Never make up prices — only use ranges from the product database above.${kbContext}${getLanguageInstruction(language)}\`;
+Never make up prices — only use ranges from the product database above.${kbContext}${getLanguageInstruction(language)}`;
   }
 
   async chat(userId: string | null, dto: ChatDto & { source?: string; userPhone?: string; userName?: string }) {
