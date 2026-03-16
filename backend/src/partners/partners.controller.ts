@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Headers, UnauthorizedException, Param } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Headers, UnauthorizedException, Param } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PartnersService } from './partners.service';
 
@@ -40,5 +40,23 @@ export class PartnersController {
   ) {
     await this.validateKey(apiKey);
     return this.partnersService.createClaim(body.userId, body.dto);
+  }
+
+  @Get('leads')
+  @ApiOperation({ summary: '[Partner] Get leads assigned to this partner' })
+  async getLeads(
+    @Headers('x-api-key') apiKey: string,
+  ) {
+    const partner = await this.validateKey(apiKey);
+    return this.partnersService.getLeads(partner.id);
+  }
+
+  @Get('policies')
+  @ApiOperation({ summary: '[Partner] Get all policies' })
+  async getAllPolicies(
+    @Headers('x-api-key') apiKey: string,
+  ) {
+    await this.validateKey(apiKey);
+    return this.partnersService.getAllPolicies();
   }
 }

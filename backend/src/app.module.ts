@@ -28,6 +28,8 @@ import { LeadsModule } from './leads/leads.module';
 import { WhatsAppModule } from './whatsapp/whatsapp.module';
 import { KnowledgeBaseModule } from './knowledge/knowledge-base.module';
 import { GroupPoliciesModule } from './group-policies/group-policies.module';
+import { UssdModule } from './ussd/ussd.module';
+import { ReferralsModule } from './referrals/referrals.module';
 
 @Module({
   imports: [
@@ -95,6 +97,8 @@ import { GroupPoliciesModule } from './group-policies/group-policies.module';
     WhatsAppModule,
     KnowledgeBaseModule,
     GroupPoliciesModule,
+    UssdModule,
+    ReferralsModule,
   ],
 })
 export class AppModule {}

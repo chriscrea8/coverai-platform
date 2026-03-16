@@ -226,6 +226,15 @@ export class AutoMigrationService implements OnApplicationBootstrap {
     `).catch(() => {});
     await q(`CREATE INDEX IF NOT EXISTS idx_group_policies_owner_id ON group_policies(owner_id)`).catch(() => {});
 
+
+    // ── 13. Users: referral columns ──────────────────────────────────────────
+    await q(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20) UNIQUE`).catch(() => {});
+    await q(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by UUID`).catch(() => {});
+    await q(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_earnings DECIMAL(12,2) DEFAULT 0`).catch(() => {});
+    await q(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0`).catch(() => {});
+    await q(`CREATE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code)`).catch(() => {});
+    await q(`CREATE INDEX IF NOT EXISTS idx_users_referred_by ON users(referred_by)`).catch(() => {});
+
     this.logger.log('All migration steps executed');
   }
 }

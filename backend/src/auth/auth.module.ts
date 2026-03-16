@@ -8,6 +8,7 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { User } from '../users/user.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { ReferralsModule } from '../referrals/referrals.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
       }),
     }),
     NotificationsModule,
+    ReferralsModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

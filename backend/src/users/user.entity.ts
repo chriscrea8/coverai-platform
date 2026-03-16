@@ -52,6 +52,12 @@ export class User {
   @Column({ name: 'bank_account_number', nullable: true }) bankAccountNumber: string;
   @Column({ name: 'bank_account_name', nullable: true }) bankAccountName: string;
   @Column({ name: 'bank_code', nullable: true }) bankCode: string;
+  // Referral system
+  @Column({ name: 'referral_code', unique: true, nullable: true }) referralCode: string;
+  @Column({ name: 'referred_by', nullable: true }) referredBy: string; // userId of referrer
+  @Column({ name: 'referral_earnings', type: 'decimal', precision: 12, scale: 2, default: 0 }) referralEarnings: number;
+  @Column({ name: 'referral_count', default: 0 }) referralCount: number;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' }) createdAt: Date;
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' }) updatedAt: Date;
 }

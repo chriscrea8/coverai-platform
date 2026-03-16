@@ -363,6 +363,7 @@ function OverviewTab({ store, loading, setTab }: any) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             { label: 'Review Claims',  icon: '🛡️', tab: 'claims',    note: `${s.openClaims || 0} open`, accent: '#E84545' },
+            { label: 'Leads Dashboard', icon: '📊', href: '/admin/leads', note: 'Track conversions', accent: '#00C2A8' },
             { label: 'Add Provider',   icon: '🏦', tab: 'providers', note: 'Onboard insurer', accent: '#F4A623' },
             { label: 'Add Product',    icon: '📦', tab: 'products',  note: 'New coverage',   accent: '#00C2A8' },
             { label: 'Manage Users',   icon: '👥', tab: 'users',     note: `${s.totalUsers || 0} total`, accent: '#7C6BFF' },

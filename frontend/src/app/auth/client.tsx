@@ -27,7 +27,8 @@ function AuthForm() {
   const params = useSearchParams()
   const [mode, setMode] = useState<'login' | 'register'>(params.get('mode') === 'register' ? 'register' : 'login')
   const reason = params.get('reason') // 'idle' | 'expired'
-  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', role: 'consumer' })
+  const refCode = params.get('ref') || ''
+  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', role: 'consumer', referralCode: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPass, setShowPass] = useState(false)
@@ -42,7 +43,10 @@ function AuthForm() {
 
   const { setAuth, isLoggedIn } = useAuthStore()
 
-  useEffect(() => { if (isLoggedIn()) router.push('/dashboard') }, [])
+  useEffect(() => {
+    if (isLoggedIn()) router.push('/dashboard')
+    if (refCode) setForm(f => ({ ...f, referralCode: refCode }))
+  }, [])
 
   // Countdown for resend cooldown
   useEffect(() => {
@@ -237,6 +241,11 @@ function AuthForm() {
                   <input className={inputCls} style={inputSty} type="tel"
                     placeholder="+2348012345678" value={form.phone} onChange={e => set('phone', e.target.value)} autoComplete="tel" />
                 </div>
+                {form.referralCode && (
+                  <div className="p-3 rounded-xl text-sm" style={{ background: 'rgba(46,201,126,0.1)', border: '1px solid rgba(46,201,126,0.2)', color: '#2EC97E' }}>
+                    🎁 Referral code applied: <strong>{form.referralCode}</strong>
+                  </div>
+                )}
                 <div>
                   <label className="text-xs font-semibold text-muted uppercase tracking-wider block mb-1.5">Account Type</label>
                   <select className={inputCls} style={{ background: 'rgba(13,27,62,0.9)', border: '1px solid rgba(255,255,255,0.1)' }}

@@ -32,6 +32,11 @@ export class RegisterDto {
   @IsOptional()
   @IsEnum(UserRole)
   role?: UserRole;
+
+  @ApiPropertyOptional({ example: 'CHUK1234' })
+  @IsOptional()
+  @IsString()
+  referralCode?: string;
 }
 
 export class LoginDto {

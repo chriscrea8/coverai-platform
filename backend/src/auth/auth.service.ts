@@ -11,6 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { User, UserStatus } from '../users/user.entity';
 import { RegisterDto, LoginDto, ForgotPasswordDto, ResetPasswordDto } from './auth.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ReferralsService } from '../referrals/referrals.service';
 
 @Injectable()
 export class AuthService {
@@ -22,6 +23,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly notificationsService: NotificationsService,
+    private readonly referralsService: ReferralsService,
   ) {}
 
   // ── REGISTER ───────────────────────────────────────────────
@@ -50,6 +52,13 @@ export class AuthService {
 
     await this.userRepo.save(user);
     this.logger.log(`New user registered: ${user.email} [${user.role}]`);
+
+    // Apply referral if code provided
+    if (dto.referralCode) {
+      this.referralsService.applyReferral(user.id, dto.referralCode).catch(() => {});
+    }
+    // Generate referral code for new user
+    this.referralsService.generateCode(user.id).catch(() => {});
 
     // Send OTP email (non-blocking)
     await this.notificationsService.sendEmail(user, {

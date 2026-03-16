@@ -84,13 +84,91 @@ export class PaymentsService {
     }
     try {
       const user = await this.usersService.findById(payment.userId);
-      if (user) await this.notificationsService.sendEmail(user, {
-        subject: '✅ Payment Confirmed',
-        message: `Payment of ₦${Number(payment.amount).toLocaleString()} confirmed. Ref: ${payment.paymentReference}`,
-        entityType: 'payment',
-        entityId: payment.id,
-      });
-    } catch {}
+      if (user) {
+        // Fetch policy details for certificate
+        let policyDetails: any = null;
+        if (payment.policyId) {
+          try { policyDetails = await this.policiesService.findOne(payment.policyId, payment.userId); } catch {}
+        }
+
+        const certHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 650px; margin: 0 auto; background: #fff;">
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #0A0F1E, #1A3A8F); padding: 30px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="color: #F4A623; margin: 0; font-size: 28px;">CoverAI</h1>
+              <p style="color: rgba(255,255,255,0.7); margin: 5px 0 0; font-size: 14px;">Insurance Platform — Policy Certificate</p>
+            </div>
+            <!-- Success Banner -->
+            <div style="background: #E8F5E9; padding: 16px; text-align: center; border-left: 4px solid #2EC97E;">
+              <h2 style="color: #1B5E20; margin: 0; font-size: 20px;">✅ Payment Successful — You're Covered!</h2>
+            </div>
+            <!-- Details -->
+            <div style="padding: 28px; background: #f9f9f9;">
+              <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.1);">
+                <tr style="background: #F4A623;">
+                  <td colspan="2" style="padding: 12px 16px; font-weight: bold; color: #0A0F1E; font-size: 15px;">📋 Policy Certificate</td>
+                </tr>
+                ${policyDetails ? `
+                <tr style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 12px 16px; color: #666; width: 40%;">Policy Number</td>
+                  <td style="padding: 12px 16px; font-weight: bold; color: #1A3A8F;">${policyDetails.policyNumber || 'Processing...'}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 12px 16px; color: #666;">Policy Status</td>
+                  <td style="padding: 12px 16px;"><span style="background: #E8F5E9; color: #2EC97E; padding: 3px 10px; border-radius: 20px; font-weight: bold; font-size: 13px;">${policyDetails.policyStatus?.toUpperCase() || 'ACTIVE'}</span></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 12px 16px; color: #666;">Coverage Period</td>
+                  <td style="padding: 12px 16px;">${policyDetails.startDate ? new Date(policyDetails.startDate).toLocaleDateString('en-NG') : 'N/A'} — ${policyDetails.endDate ? new Date(policyDetails.endDate).toLocaleDateString('en-NG') : 'N/A'}</td>
+                </tr>
+                ` : ''}
+                <tr style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 12px 16px; color: #666;">Policy Holder</td>
+                  <td style="padding: 12px 16px; font-weight: bold;">${user.name}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 12px 16px; color: #666;">Email</td>
+                  <td style="padding: 12px 16px;">${user.email}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 12px 16px; color: #666;">Amount Paid</td>
+                  <td style="padding: 12px 16px; font-weight: bold; color: #F4A623; font-size: 16px;">₦${Number(payment.amount).toLocaleString()}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 12px 16px; color: #666;">Payment Reference</td>
+                  <td style="padding: 12px 16px; font-family: monospace; font-size: 13px;">${payment.paymentReference}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 16px; color: #666;">Payment Date</td>
+                  <td style="padding: 12px 16px;">${new Date().toLocaleString('en-NG')}</td>
+                </tr>
+              </table>
+
+              <div style="margin-top: 20px; padding: 16px; background: #FFF9E6; border-left: 4px solid #F4A623; border-radius: 4px;">
+                <strong>📌 Important:</strong> Keep this email as proof of your insurance coverage. You can view your full policy details anytime on your CoverAI dashboard.
+              </div>
+
+              <div style="margin-top: 20px; text-align: center;">
+                <a href="${this.configService.get('app.frontendUrl') || 'https://coverai-platform.vercel.app'}/dashboard" style="background: #F4A623; color: #0A0F1E; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">View My Dashboard →</a>
+              </div>
+            </div>
+            <!-- Footer -->
+            <div style="padding: 16px; text-align: center; background: #0A0F1E; border-radius: 0 0 12px 12px;">
+              <p style="color: rgba(255,255,255,0.5); font-size: 12px; margin: 0;">CoverAI Insurance Platform | Nigeria's AI-Powered InsurTech | Regulated by NAICOM</p>
+            </div>
+          </div>
+        `;
+
+        await this.notificationsService.sendEmail(user, {
+          subject: `✅ Policy Certificate — ₦${Number(payment.amount).toLocaleString()} Payment Confirmed`,
+          message: certHtml,
+          entityType: 'payment',
+          entityId: payment.id,
+        });
+      }
+    } catch (e) {
+      this.logger.warn('Certificate email failed: ' + e?.message);
+    }
   }
 
   async verify(reference: string) {

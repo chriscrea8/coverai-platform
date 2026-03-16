@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { policiesApi, claimsApi, paymentsApi } from '@/lib/api'
+import { policiesApi, claimsApi, paymentsApi, chatApi, recommendationsApi } from '@/lib/api'
 import { useAuthStore, hydrateAuth } from '@/lib/store'
 import { Suspense } from 'react'
 
@@ -25,6 +25,7 @@ const NAV_ITEMS = [
   { id: 'payments',  icon: '💳', label: 'Payments'       },
   { id: 'recommended', icon: '✨', label: 'For You'      },
   { id: 'group', icon: '👥', label: 'Group Policies' },
+  { id: 'chat_history', icon: '💬', label: 'Chat History' },
 ]
 
 const STATUS_COLOR: Record<string, string> = {
@@ -52,6 +53,8 @@ function DashboardInner() {
   const [policies, setPolicies] = useState<any[]>([])
   const [claims, setClaims]     = useState<any[]>([])
   const [groupPolicies, setGroupPolicies] = useState<any[]>([])
+  const [chatHistory, setChatHistory] = useState<any[]>([])
+  const [chatLoading, setChatLoading] = useState(false)
   const [payments, setPayments] = useState<any[]>([])
   const [recommendations, setRecommendations] = useState<any[]>([])
   const [loading, setLoading]   = useState(true)
@@ -302,6 +305,9 @@ function DashboardInner() {
             <Link href="/compare" onClick={() => setMenuOpen(false)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted hover:text-white">
               <span>📊</span>Compare Products
             </Link>
+            <Link href="/referrals" onClick={() => setMenuOpen(false)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted hover:text-white">
+              <span>🎁</span>Refer &amp; Earn
+            </Link>
             <Link href="/claims/new" onClick={() => setMenuOpen(false)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted hover:text-white">
               <span>⚡</span>New Claim
             </Link>
@@ -337,6 +343,9 @@ function DashboardInner() {
             </Link>
             <Link href="/compare" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted hover:text-white hover:bg-white/5 transition-all">
               <span>📊</span>Compare Products
+            </Link>
+            <Link href="/referrals" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted hover:text-white hover:bg-white/5 transition-all" style={{ background: "rgba(244,166,35,0.08)", border: "1px solid rgba(244,166,35,0.15)" }}>
+              <span>🎁</span><span style={{ color: "#F4A623", fontWeight: 600 }}>Refer &amp; Earn</span>
             </Link>
             <Link href="/claims/new" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted hover:text-white hover:bg-white/5 transition-all">
               <span>⚡</span>New Claim

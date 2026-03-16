@@ -96,6 +96,11 @@ export const compareApi = {
     api.post('/chat/eligibility', data),
 }
 
+export const referralsApi = {
+  getStats: () => api.get('/referrals/stats'),
+  generate: () => api.post('/referrals/generate'),
+}
+
 export const leadsApi = {
   create: (data: { insuranceType: string; name?: string; phone?: string; location?: string; notes?: string }) =>
     api.post('/leads', data),

@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
 import { Partner } from './partner.entity';
 import { PoliciesService } from '../policies/policies.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { ClaimsService } from '../claims/claims.service';
 
 @Injectable()
@@ -45,5 +47,14 @@ export class PartnersService {
 
   async createClaim(userId: string, dto: any) {
     return this.claimsService.create(userId, dto);
+  }
+
+  async getLeads(partnerId: string) {
+    // Return all leads for now - in production filter by partnerId
+    return [];
+  }
+
+  async getAllPolicies() {
+    return this.getPolicies('system');
   }
 }
