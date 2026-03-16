@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { policiesApi, claimsApi, paymentsApi, chatApi, recommendationsApi } from '@/lib/api'
+import { policiesApi, claimsApi, paymentsApi, chatApi, recommendationsApi, api } from '@/lib/api'
 import { useAuthStore, hydrateAuth } from '@/lib/store'
 import { Suspense } from 'react'
 
