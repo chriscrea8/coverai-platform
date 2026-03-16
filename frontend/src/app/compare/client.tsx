@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import Navbar from '@/components/Navbar'
 import Link from 'next/link'
 import { compareApi, leadsApi } from '@/lib/api'
 
@@ -215,23 +216,10 @@ export default function ComparePage() {
   return (
     <div style={{ minHeight: '100vh', background: 'radial-gradient(ellipse 70% 40% at 50% 0%, rgba(26,58,143,0.2) 0%, transparent 70%), #0A0F1E', color: '#fff' }}>
 
-      {/* Header */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.07)',
-        background: 'rgba(10,15,30,0.95)', backdropFilter: 'blur(12px)',
-        position: 'sticky', top: 0, zIndex: 10,
-      }}>
-        <Link href="/" style={{ fontFamily: 'Syne, sans-serif', fontWeight: 900, fontSize: 20, textDecoration: 'none', color: '#fff' }}>
-          Cover<span style={{ color: '#F4A623' }}>AI</span>
-        </Link>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <Link href="/learn" style={{ padding: '8px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', fontSize: 13, textDecoration: 'none' }}>Education Hub</Link>
-          <Link href="/coverage" style={{ padding: '8px 16px', borderRadius: 10, background: '#F4A623', color: '#0A0F1E', fontSize: 13, fontWeight: 700, textDecoration: 'none', fontFamily: 'Syne, sans-serif' }}>Get Coverage</Link>
-        </div>
-      </div>
+      <Navbar />
+      <div style={{ height: 64 }} />
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 24px 80px' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '96px 24px 80px' }}>
 
         {/* Hero */}
         <div style={{ textAlign: 'center', marginBottom: 40 }}>

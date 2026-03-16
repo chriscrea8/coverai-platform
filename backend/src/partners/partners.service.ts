@@ -4,8 +4,6 @@ import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
 import { Partner } from './partner.entity';
 import { PoliciesService } from '../policies/policies.service';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { ClaimsService } from '../claims/claims.service';
 
 @Injectable()

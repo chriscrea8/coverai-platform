@@ -367,8 +367,8 @@ function OverviewTab({ store, loading, setTab }: any) {
             { label: 'Add Provider',   icon: '🏦', tab: 'providers', note: 'Onboard insurer', accent: '#F4A623' },
             { label: 'Add Product',    icon: '📦', tab: 'products',  note: 'New coverage',   accent: '#00C2A8' },
             { label: 'Manage Users',   icon: '👥', tab: 'users',     note: `${s.totalUsers || 0} total`, accent: '#7C6BFF' },
-          ].map(a => (
-            <button key={a.label} onClick={() => setTab(a.tab)}
+          ].map((a: any) => (
+            <button key={a.label} onClick={() => a.href ? (window.location.href = a.href) : setTab(a.tab)}
               className="p-4 rounded-xl text-left hover:-translate-y-0.5 transition-all"
               style={{ background: 'rgba(26,58,143,.25)', border: '1px solid rgba(26,58,143,.4)' }}>
               <div className="text-2xl mb-2">{a.icon}</div>

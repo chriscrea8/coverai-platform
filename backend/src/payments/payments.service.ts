@@ -88,7 +88,7 @@ export class PaymentsService {
         // Fetch policy details for certificate
         let policyDetails: any = null;
         if (payment.policyId) {
-          try { policyDetails = await this.policiesService.findOne(payment.policyId, payment.userId); } catch {}
+          try { policyDetails = await this.policiesService.findById(payment.policyId); } catch {}
         }
 
         const certHtml = `

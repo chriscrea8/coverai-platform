@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 
 const NAV_LINKS = [
   { label: 'Home', href: '/' },
@@ -10,7 +10,6 @@ const NAV_LINKS = [
   { label: 'Compare', href: '/compare' },
   { label: 'Get Coverage', href: '/coverage' },
   { label: 'Claims', href: '/claims/new' },
-  { label: 'Dashboard', href: '/dashboard' },
 ]
 
 export default function Navbar() {
@@ -47,6 +46,14 @@ export default function Navbar() {
               {l.label}
             </Link>
           ))}
+          {/* Dashboard only when logged in */}
+          {loggedIn && (
+            <Link href="/dashboard"
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive('/dashboard') ? 'text-white' : 'text-muted hover:text-white hover:bg-white/5'}`}
+              style={isActive('/dashboard') ? { background: 'rgba(26,58,143,0.4)' } : {}}>
+              Dashboard
+            </Link>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -82,6 +89,13 @@ export default function Navbar() {
               {l.label}
             </Link>
           ))}
+          {loggedIn && (
+            <Link href="/dashboard" onClick={() => setMenuOpen(false)}
+              className={`flex items-center px-4 py-3 rounded-xl text-sm font-medium mb-1 transition-all ${isActive('/dashboard') ? 'text-white' : 'text-muted'}`}
+              style={isActive('/dashboard') ? { background: 'rgba(26,58,143,0.35)' } : {}}>
+              Dashboard
+            </Link>
+          )}
           {!loggedIn && (
             <Link href="/auth" onClick={() => setMenuOpen(false)}
               className="flex items-center px-4 py-3 rounded-xl text-sm font-medium text-muted border-t border-white/5 mt-1 pt-3">
