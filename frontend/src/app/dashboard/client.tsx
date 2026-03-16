@@ -289,6 +289,12 @@ function DashboardInner() {
             <Link href="/chat" onClick={() => setMenuOpen(false)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted hover:text-white">
               <span>🤖</span>AI Assistant
             </Link>
+            <Link href="/learn" onClick={() => setMenuOpen(false)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted hover:text-white">
+              <span>📚</span>Learn Insurance
+            </Link>
+            <Link href="/compare" onClick={() => setMenuOpen(false)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted hover:text-white">
+              <span>📊</span>Compare Products
+            </Link>
             <Link href="/claims/new" onClick={() => setMenuOpen(false)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted hover:text-white">
               <span>⚡</span>New Claim
             </Link>
@@ -318,6 +324,12 @@ function DashboardInner() {
             <div className="my-2 border-t border-white/5" />
             <Link href="/chat" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted hover:text-white hover:bg-white/5 transition-all">
               <span>🤖</span>AI Assistant
+            </Link>
+            <Link href="/learn" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted hover:text-white hover:bg-white/5 transition-all">
+              <span>📚</span>Learn Insurance
+            </Link>
+            <Link href="/compare" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted hover:text-white hover:bg-white/5 transition-all">
+              <span>📊</span>Compare Products
             </Link>
             <Link href="/claims/new" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted hover:text-white hover:bg-white/5 transition-all">
               <span>⚡</span>New Claim
