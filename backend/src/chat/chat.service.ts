@@ -317,15 +317,49 @@ Never make up prices — only use ranges from the product database above.${kbCon
   }
 
   private getFallbackResponse(message: string): string {
-    const m = message.toLowerCase();
-    if (m.includes('what can you do') || m.includes('what do you do') || m.includes('help') || m.includes('capabilities')) {
-      return 'Here\'s what I can help you with 🛡️:\n\n✅ *Explain insurance* in plain language\n✅ *Recommend products* for your business or personal needs\n✅ *Compare options* — motor, health, life, property\n✅ *Check eligibility* for different insurance types\n✅ *Guide you through claims* step by step\n✅ *Connect you with insurers* for the best rates\n\nWhat would you like to start with? Just ask!';
+    const m = message.toLowerCase().trim();
+
+    // Greetings — MUST respond warmly, not with an insurance lecture
+    if (/^(hi|hello|hey|howdy|good morning|good afternoon|good evening|morning|afternoon|evening|sup|yo|hy|helo|helo there|hi there|hey there)[\s!?.]*$/.test(m)) {
+      return 'Hello! 👋 I\'m *ARIA* — your AI insurance guide for Nigeria.\n\nI can help you:\n🛡️ Find the right insurance for your needs\n📋 Explain any policy in plain language\n⚡ Guide you through claims\n💰 Get the best rates\n\nWhat would you like to know?';
     }
-    if (m.includes('claim')) return 'To file a claim: Dashboard → Claims → New Claim. You\'ll need photos and your policy number. Our team reviews in 5–7 working days. 📋';
-    if (m.includes('motor') || m.includes('car')) return 'For motor insurance 🚗:\n\n✅ *Third Party* — legal minimum, covers damage to others (₦5k–₦15k/yr)\n✅ *Comprehensive* — covers your car too (2–5% of car value/yr)\n\nWant to compare options?';
-    if (m.includes('business') || m.includes('sme')) return 'For your business 🏪:\n\n1. Fire & Burglary — protects stock\n2. Public Liability — covers customer injuries\n3. Business Interruption — covers lost income\n\nWant the best rates for your business type?';
-    if (m.includes('health') || m.includes('medical')) return 'Health insurance covers your medical bills so you don\'t pay out of pocket 🏥\n\nOptions in Nigeria:\n- *HMO plans* — monthly premium, access to hospital network\n- *Individual health cover* — pay per treatment up to a limit\n\nCosts from ₦30,000/year. Want me to find the best plan for you?';
-    if (m.includes('life')) return 'Life insurance pays your family a lump sum if you die 🛡️\n\nA simple rule: get *10x your annual income* as cover.\n\nIf you earn ₦2m/year → aim for ₦20m cover.\n\nTerm life starts from ₦30,000/year. Want to know more?';
-    return 'I\'m ARIA, your AI insurance guide for Nigeria 🇳🇬\n\nI can help you:\n- Find the right insurance for your needs\n- Explain any policy in plain language\n- Guide you through filing a claim\n- Connect you with the best insurers\n\nWhat would you like to know?';
+
+    // What can you do
+    if (/what can you do|what do you do|capabilities|how can you help/.test(m)) {
+      return 'Here\'s what I can help you with 🛡️:\n\n✅ *Explain insurance* in plain language\n✅ *Recommend products* for your needs\n✅ *Compare options* — motor, health, life, property\n✅ *Check eligibility* for any coverage\n✅ *Guide claims* step by step\n✅ *Connect you with insurers* for the best rates\n\nJust ask me anything!';
+    }
+
+    // Claims
+    if (/claim|accident|stolen|damaged/.test(m)) {
+      return 'To file a claim:\n\n1️⃣ Go to Dashboard → Claims → New Claim\n2️⃣ Upload photos of the damage\n3️⃣ Attach your policy number\n4️⃣ Our team reviews in 5–7 working days\n\nNeed help with a specific claim type? 📋';
+    }
+
+    // Motor
+    if (/motor|car|vehicle|third.?party|comprehensive|drive/.test(m)) {
+      return 'Motor insurance options 🚗:\n\n✅ *Third Party* (legal minimum) — covers damage to others\n• Cost: ₦5,000–₦15,000/year\n\n✅ *Comprehensive* — covers your car + others\n• Cost: 2–5% of car value/year\n\nWant me to find the best option for your vehicle?';
+    }
+
+    // Health
+    if (/health|medical|hospital|hmo|doctor/.test(m)) {
+      return 'Health insurance in Nigeria 🏥:\n\n• *HMO Plans* — access to hospital network from ₦30k/year\n• *Individual Cover* — up to ₦5M limit per year\n• *Family Plans* — cover your whole family from ₦80k/year\n\nWhat\'s your budget? I can find the right fit for you!';
+    }
+
+    // Life
+    if (/life|death|beneficiary|family protect/.test(m)) {
+      return 'Life insurance protects your family 🛡️\n\nRule of thumb: get *10x your annual income* as cover.\n\nIf you earn ₦2M/year → aim for ₦20M cover.\n\nTerm life starts from ₦30,000/year for ₦5M cover. Want a specific quote?';
+    }
+
+    // Business/SME
+    if (/business|sme|shop|company|enterprise|fire|burglary/.test(m)) {
+      return 'For your business 🏪:\n\n1. 🔥 *Fire & Burglary* — protects stock & equipment\n2. 👥 *Public Liability* — covers customer injuries\n3. 📊 *Business Interruption* — covers lost income if you close\n4. 📦 *BOP Bundle* — all three at a discount\n\nWhat type of business do you run? I\'ll give you a specific recommendation!';
+    }
+
+    // Price/cost
+    if (/cost|price|how much|afford|cheap|expensive|premium/.test(m)) {
+      return 'Insurance costs in Nigeria 💰:\n\n🚗 Motor (Third Party): ₦5k–₦15k/year\n🏥 Health (Individual): ₦30k–₦100k/year\n🏪 Fire & Burglary: ₦15k–₦60k/year\n❤️ Life (Term): ₦30k–₦80k/year\n\nTell me what you want to insure and I\'ll give you an accurate range!';
+    }
+
+    // Default — not a generic insurance lecture
+    return 'I\'m ARIA, your AI insurance advisor for Nigeria 🇳🇬\n\nAsk me anything about insurance — I\'ll explain it in plain language without the jargon.\n\nTry asking: "What insurance does my shop need?" or "How do I file a motor claim?" 👇';
   }
 }

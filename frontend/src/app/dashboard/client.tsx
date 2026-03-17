@@ -9,7 +9,7 @@ import { Suspense } from 'react'
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'
 
 // Idle timeout: show warning after 20 min of no activity, sign out after 60s
-const IDLE_TIMEOUT_MS = 20 * 60 * 1000
+const IDLE_TIMEOUT_MS = 10 * 60 * 1000 // 10 minutes
 const COUNTDOWN_SECONDS = 60
 async function apiFetch(token: string, path: string) {
   const res = await fetch(`${API}${path}`, { headers: { Authorization: `Bearer ${token}` } })

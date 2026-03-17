@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import ARIAWidget from '@/components/ARIAWidget'
+import IdleWatcher from '@/components/IdleWatcher'
 
 export const viewport = {
   width: 'device-width',
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="font-dm bg-ink text-white antialiased">
         {children}
         <ARIAWidget />
+        <IdleWatcher />
       </body>
     </html>
   )
