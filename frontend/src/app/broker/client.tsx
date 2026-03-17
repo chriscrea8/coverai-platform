@@ -1,4 +1,5 @@
 'use client'
+import React from 'react'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { api } from '@/lib/api'
@@ -52,7 +53,7 @@ export default function BrokerClient() {
     } catch {}
   }
 
-  const inputSty: React.CSSProperties = {
+  const inputSty: { [key: string]: string | number } = {
     width: '100%', padding: '11px 14px', borderRadius: 10, fontSize: 14,
     background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
     color: '#fff', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box',

@@ -48,13 +48,13 @@ export class PartnersService {
   }
 
   async getLeads(partnerId: string) {
-    // Return all leads for now - in production filter by partnerId
     return [];
   }
 
   async getAllPolicies() {
     return this.getPolicies('system');
   }
+
   async generateQuote(params: {
     insuranceType: string;
     customerName?: string;
@@ -63,22 +63,20 @@ export class PartnersService {
     vehicleValue?: number;
     coverageType?: string;
   }) {
-    // Base premium rates for Nigerian market
     const rates: Record<string, any> = {
       motor_third_party:   { min: 5000,   max: 15000,  description: 'Third Party Motor Insurance' },
-      motor_comprehensive: { min: null,    max: null,   description: 'Comprehensive Motor Insurance', rateOfValue: 0.03 },
+      motor_comprehensive: { min: null,   max: null,   description: 'Comprehensive Motor Insurance', rateOfValue: 0.03 },
       health_individual:   { min: 30000,  max: 100000, description: 'Individual Health Insurance (HMO)' },
       health_family:       { min: 80000,  max: 250000, description: 'Family Health Insurance Plan' },
       fire_burglary:       { min: 15000,  max: 60000,  description: 'Fire & Burglary Insurance' },
       life_term:           { min: 30000,  max: 80000,  description: 'Term Life Insurance' },
-      business_bop:        { min: 40000,  max: 150000, description: 'Business Owner's Policy (BOP)' },
+      business_bop:        { min: 40000,  max: 150000, description: "Business Owner's Policy (BOP)" },
     };
 
-    const type = params.insuranceType.toLowerCase().replace(/[\s-]/g, '_');
-    const rate = rates[type] || rates[`${type}_comprehensive`] || rates[`${type}_individual`];
+    const type = params.insuranceType.toLowerCase().replace(/\s+|-+/g, '_');
+    const rate = rates[type] || rates[type + '_comprehensive'] || rates[type + '_individual'];
 
     if (!rate) {
-      // Return all available types if not found
       return {
         available: true,
         insuranceType: params.insuranceType,
@@ -92,10 +90,9 @@ export class PartnersService {
     let premiumMin = rate.min;
     let premiumMax = rate.max;
 
-    // Adjust for vehicle value if comprehensive motor
     if (rate.rateOfValue && params.vehicleValue) {
-      premiumMin = Math.round(params.vehicleValue * (rate.rateOfValue * 0.7));
-      premiumMax = Math.round(params.vehicleValue * (rate.rateOfValue * 1.3));
+      premiumMin = Math.round(params.vehicleValue * rate.rateOfValue * 0.7);
+      premiumMax = Math.round(params.vehicleValue * rate.rateOfValue * 1.3);
     }
 
     return {
@@ -118,14 +115,12 @@ export class PartnersService {
     paymentReference?: string;
     coverageDetails?: Record<string, any>;
   }) {
-    // Create policy via policies service
     const policy = await this.policiesService.purchase(body.userId, {
       productId: body.productId,
       coverageDetails: body.coverageDetails || {},
-      paymentFrequency: 'annually',
+      paymentFrequency: 'annually' as any,
     });
 
-    // Log partner attribution
     this.logger.log(`Partner ${partnerId} created policy ${policy.policyNumber} for user ${body.userId}`);
 
     return {

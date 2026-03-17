@@ -207,7 +207,7 @@ export default function ComparePage() {
     setLeadSubmitting(false)
   }
 
-  const inputSty: React.CSSProperties = {
+  const inputSty: { [key: string]: string | number } = {
     width: '100%', padding: '10px 14px', borderRadius: 10, fontSize: 14,
     background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
     color: '#fff', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box',
@@ -292,9 +292,10 @@ export default function ComparePage() {
                   <span style={{ fontSize: 13, color: '#6B7FA3' }}>Sorted by lowest price</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
-                  {products.map(p => (
-                    <ProductCard key={p.id} product={p} onGetQuote={(prod) => { setQuoteModal({ open: true, product: prod }); setLeadDone(false); setLeadForm({ name: '', phone: '' }) }} />
-                  ))}
+                  {products.map(p => {
+                    const handleQuote = (prod: Product) => { setQuoteModal({ open: true, product: prod }); setLeadDone(false); setLeadForm({ name: '', phone: '' }) };
+                    return <ProductCard key={p.id} product={p as Product} onGetQuote={handleQuote} />
+                  })}
                 </div>
               </>
             )}
