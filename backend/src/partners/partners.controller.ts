@@ -59,4 +59,46 @@ export class PartnersController {
     await this.validateKey(apiKey);
     return this.partnersService.getAllPolicies();
   }
+  @Post('quote')
+  @ApiOperation({ summary: '[Partner] Get insurance quote for a customer' })
+  async getQuote(
+    @Headers('x-api-key') apiKey: string,
+    @Body() body: {
+      insuranceType: string;
+      customerName?: string;
+      customerPhone?: string;
+      location?: string;
+      vehicleValue?: number;
+      coverageType?: string;
+    },
+  ) {
+    await this.validateKey(apiKey);
+    return this.partnersService.generateQuote(body);
+  }
+
+  @Post('purchase')
+  @ApiOperation({ summary: '[Partner] Purchase a policy for a customer' })
+  async purchase(
+    @Headers('x-api-key') apiKey: string,
+    @Body() body: {
+      userId: string;
+      productId: string;
+      paymentReference?: string;
+      coverageDetails?: Record<string, any>;
+    },
+  ) {
+    const partner = await this.validateKey(apiKey);
+    return this.partnersService.partnerPurchase(partner.id, body);
+  }
+
+  @Post('create-key')
+  @ApiOperation({ summary: 'Create a new partner API key (admin only)' })
+  async createKey(
+    @Headers('x-api-key') apiKey: string,
+    @Body() body: { companyName: string; contactEmail: string },
+  ) {
+    // Only existing valid partners can create new keys (admin flow)
+    await this.validateKey(apiKey);
+    return this.partnersService.createApiKey(body.companyName, body.contactEmail);
+  }
 }

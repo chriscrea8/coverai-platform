@@ -235,6 +235,55 @@ export class AutoMigrationService implements OnApplicationBootstrap {
     await q(`CREATE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code)`).catch(() => {});
     await q(`CREATE INDEX IF NOT EXISTS idx_users_referred_by ON users(referred_by)`).catch(() => {});
 
+
+    // ── 14. user_verifications (KYC) ─────────────────────────────────────────
+    await q(`
+      CREATE TABLE IF NOT EXISTS user_verifications (
+        id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id             UUID NOT NULL,
+        verification_type   VARCHAR(30) NOT NULL,
+        verification_status VARCHAR(20) DEFAULT 'pending',
+        reference           VARCHAR(255),
+        otp                 VARCHAR(255),
+        otp_expires         TIMESTAMPTZ,
+        verified_value      VARCHAR(50),
+        metadata            JSONB,
+        failure_reason      TEXT,
+        attempt_count       INT DEFAULT 0,
+        verified_at         TIMESTAMPTZ,
+        created_at          TIMESTAMPTZ DEFAULT NOW(),
+        updated_at          TIMESTAMPTZ DEFAULT NOW()
+      )
+    `).catch(() => {});
+    await q(`CREATE INDEX IF NOT EXISTS idx_user_verifications_user_id ON user_verifications(user_id)`).catch(() => {});
+    await q(`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_verifications_unique ON user_verifications(user_id, verification_type)`).catch(() => {});
+
+    // ── 15. fraud_flags ───────────────────────────────────────────────────────
+    await q(`
+      CREATE TABLE IF NOT EXISTS fraud_flags (
+        id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        claim_id         UUID,
+        policy_id        UUID,
+        user_id          UUID NOT NULL,
+        reason           TEXT NOT NULL,
+        risk_score       INT NOT NULL DEFAULT 0,
+        risk_level       VARCHAR(20) DEFAULT 'low',
+        rule_triggered   VARCHAR(255) NOT NULL,
+        evidence         JSONB,
+        resolved         BOOLEAN DEFAULT false,
+        resolved_by      UUID,
+        resolution_notes TEXT,
+        flagged_at       TIMESTAMPTZ DEFAULT NOW(),
+        created_at       TIMESTAMPTZ DEFAULT NOW()
+      )
+    `).catch(() => {});
+    await q(`CREATE INDEX IF NOT EXISTS idx_fraud_flags_claim_id ON fraud_flags(claim_id)`).catch(() => {});
+    await q(`CREATE INDEX IF NOT EXISTS idx_fraud_flags_user_id ON fraud_flags(user_id)`).catch(() => {});
+    await q(`CREATE INDEX IF NOT EXISTS idx_fraud_flags_resolved ON fraud_flags(resolved, risk_level)`).catch(() => {});
+
+    // ── 16. policies: add plate_number index for verification ─────────────────
+    await q(`CREATE INDEX IF NOT EXISTS idx_policies_coverage_plate ON policies USING gin(coverage_details)`).catch(() => {});
+
     this.logger.log('All migration steps executed');
   }
 }

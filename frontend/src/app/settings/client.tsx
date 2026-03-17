@@ -453,6 +453,53 @@ function SecurityTab({ profile, token, showToast, setProfile }: any) {
   )
 }
 
+// ─── INSTANT VERIFY CARD ────────────────────────────────────────────────────
+function InstantVerifyCard({ item, token, showToast, setProfile }: any) {
+  const [value, setValue] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [done, setDone] = useState(false)
+
+  const verify = async () => {
+    if (!value || value.length !== 11 || !/^\d+$/.test(value)) {
+      showToast(`${item.type} must be exactly 11 digits`, false); return
+    }
+    setLoading(true)
+    try {
+      const res = await apiFetch(token, 'POST', item.endpoint, { [item.field]: value })
+      if (res.success) {
+        setDone(true)
+        setProfile((p: any) => ({ ...p, kycStatus: item.type === 'NIN' ? 'nin_verified' : 'bvn_verified' }))
+        showToast(`${item.type} verified successfully! ✅`)
+      } else {
+        showToast(res.message || `${item.type} verification failed`, false)
+      }
+    } catch (e: any) { showToast(e.message || `${item.type} verification failed`, false) }
+    setLoading(false)
+  }
+
+  return (
+    <div className="p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="font-syne font-bold text-sm mb-1">{done ? '✅' : '🪪'} {item.type} Verification</div>
+      <div className="text-muted text-xs mb-3">{item.desc}</div>
+      {done ? (
+        <div className="text-sm font-bold" style={{ color: '#2EC97E' }}>Verified ✓</div>
+      ) : (
+        <>
+          <input value={value} onChange={e => setValue(e.target.value.replace(/\D/g, '').slice(0, 11))}
+            placeholder={item.placeholder}
+            className="w-full px-3 py-2 rounded-lg text-sm mb-2 outline-none"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }} />
+          <button onClick={verify} disabled={loading || value.length !== 11}
+            className="w-full py-2 rounded-lg text-xs font-bold"
+            style={{ background: '#F4A623', color: '#0A0F1E', opacity: value.length !== 11 ? 0.5 : 1, cursor: value.length !== 11 ? 'not-allowed' : 'pointer' }}>
+            {loading ? 'Verifying...' : `Verify ${item.type}`}
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
+
 // ─── KYC TAB ───────────────────────────────────────────────────────────────
 function KycTab({ profile, token, showToast, setProfile }: any) {
   const [form, setForm] = useState({ idType: 'nin', idNumber: '', idDocumentUrl: '', selfieUrl: '' })
@@ -499,6 +546,22 @@ function KycTab({ profile, token, showToast, setProfile }: any) {
           <div>
             <div className="font-syne font-bold">Verification In Progress</div>
             <div className="text-muted text-sm mt-0.5">We're reviewing your documents. This usually takes 24 hours.</div>
+          </div>
+        </div>
+      )}
+
+      {/* Instant NIN/BVN Verification */}
+      {!kycVerified && (
+        <div className="p-5 rounded-2xl mb-6" style={{ background: 'rgba(26,58,143,0.2)', border: '1px solid rgba(26,58,143,0.3)' }}>
+          <div className="font-syne font-bold text-base mb-2">⚡ Instant Verification (NIN or BVN)</div>
+          <p className="text-muted text-sm mb-4">Verify instantly using your National Identification Number (NIN) or Bank Verification Number (BVN). Results in seconds.</p>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { type: 'NIN', desc: '11-digit National ID', placeholder: 'Enter your 11-digit NIN', endpoint: '/users/verify-identity/nin', field: 'nin' },
+              { type: 'BVN', desc: '11-digit Bank ID', placeholder: 'Enter your 11-digit BVN', endpoint: '/users/verify-identity/bvn', field: 'bvn' },
+            ].map(item => (
+              <InstantVerifyCard key={item.type} item={item} token={token} showToast={showToast} setProfile={setProfile} />
+            ))}
           </div>
         </div>
       )}

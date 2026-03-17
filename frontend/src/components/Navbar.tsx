@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { label: 'Learn', href: '/learn' },
   { label: 'Compare', href: '/compare' },
   { label: 'Get Coverage', href: '/coverage' },
+  { label: 'Verify Insurance', href: '/verify' },
 ]
 
 const AUTH_ONLY_LINKS = [

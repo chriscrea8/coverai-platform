@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { Claim, ClaimStatus } from './claim.entity';
+import { FraudService } from '../fraud/fraud.service';
 import { PolicyStatus } from '../policies/policy.entity';
 import { PoliciesService } from '../policies/policies.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -32,6 +33,7 @@ export class ClaimsService {
     @InjectRepository(Claim) private readonly claimRepo: Repository<Claim>,
     private readonly policiesService: PoliciesService,
     private readonly notificationsService: NotificationsService,
+    private readonly fraudService?: FraudService,
     private readonly usersService: UsersService,
   ) {}
 
@@ -52,6 +54,15 @@ export class ClaimsService {
     });
     await this.claimRepo.save(claim);
     this.logger.log(`Claim submitted: ${claimNumber}`);
+
+    // Run fraud detection asynchronously — never block claim submission
+    if (this.fraudService) {
+      this.fraudService.checkClaim(claim).then(result => {
+        if (result.flagged) {
+          this.logger.warn(`Fraud flag on ${claimNumber}: score=${result.riskScore} level=${result.riskLevel}`);
+        }
+      }).catch(() => {});
+    }
 
     try {
       const user = await this.usersService.findById(userId);

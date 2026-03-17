@@ -96,6 +96,31 @@ export const compareApi = {
     api.post('/chat/eligibility', data),
 }
 
+export const verificationApi = {
+  check: (params: { plate?: string; policy?: string }) => api.get('/insurance/verify', { params }),
+  getKycStatus: () => api.get('/users/verify-identity/status'),
+  sendPhoneOtp: (phone: string) => api.post('/users/verify-identity/phone/send-otp', { phone }),
+  verifyPhoneOtp: (otp: string) => api.post('/users/verify-identity/phone/verify-otp', { otp }),
+  verifyNIN: (nin: string) => api.post('/users/verify-identity/nin', { nin }),
+  verifyBVN: (bvn: string) => api.post('/users/verify-identity/bvn', { bvn }),
+}
+
+export const renewalApi = {
+  getExpiring: (days?: number) => api.get('/renewal/expiring', { params: { days } }),
+  trigger: () => api.post('/renewal/trigger'),
+}
+
+export const fraudApi = {
+  getFlags: (params?: { resolved?: boolean; level?: string }) => api.get('/fraud', { params }),
+  getStats: () => api.get('/fraud/stats'),
+  resolve: (id: string, notes: string) => api.patch(`/fraud/${id}/resolve`, { notes }),
+}
+
+export const partnerApi = {
+  getQuote: (data: any) => api.post('/partner/quote', data),
+  purchase: (data: any) => api.post('/partner/purchase', data),
+}
+
 export const referralsApi = {
   getStats: () => api.get('/referrals/stats'),
   generate: () => api.post('/referrals/generate'),

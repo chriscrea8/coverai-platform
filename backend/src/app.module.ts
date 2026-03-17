@@ -30,6 +30,10 @@ import { KnowledgeBaseModule } from './knowledge/knowledge-base.module';
 import { GroupPoliciesModule } from './group-policies/group-policies.module';
 import { UssdModule } from './ussd/ussd.module';
 import { ReferralsModule } from './referrals/referrals.module';
+import { InsuranceVerificationModule } from './insurance-verification/insurance-verification.module';
+import { KycModule } from './kyc/kyc.module';
+import { RenewalModule } from './renewal/renewal.module';
+import { FraudModule } from './fraud/fraud.module';
 
 @Module({
   imports: [
@@ -99,6 +103,10 @@ import { ReferralsModule } from './referrals/referrals.module';
     GroupPoliciesModule,
     UssdModule,
     ReferralsModule,
+    InsuranceVerificationModule,
+    KycModule,
+    RenewalModule,
+    FraudModule,
   ],
 })
 export class AppModule {}

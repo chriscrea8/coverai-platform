@@ -6,6 +6,7 @@ import { ClaimsController } from './claims.controller';
 import { PoliciesModule } from '../policies/policies.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { UsersModule } from '../users/users.module';
+import { FraudModule } from '../fraud/fraud.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { UsersModule } from '../users/users.module';
     PoliciesModule,
     NotificationsModule,
     UsersModule,
+    FraudModule,
   ],
   controllers: [ClaimsController],
   providers: [ClaimsService],
