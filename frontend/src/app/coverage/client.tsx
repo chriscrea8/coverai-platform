@@ -136,23 +136,37 @@ export default function CoveragePage() {
     setIsLoggedIn(!!localStorage.getItem('access_token'))
   }, [])
 
-  // Fetch real products when wizard completes
+  // Fetch real products from Curacel when wizard completes
   useEffect(() => {
     if (!done) return
     setLoadingProducts(true)
-    fetch(`${API}/insurance/products?limit=10`)
+    // Map user answers to Curacel product type
+    const typeMap: Record<string, string> = {
+      motor: '2',       // 3rd Party Auto
+      vehicle: '10',    // Comprehensive Auto
+      health: '1',      // Health
+      life: '3',        // Life
+      business: '8',    // Fire and Burglary
+      property: '8',
+      gadget: '7',
+      travel: '9',
+      goods: '4',
+    }
+    const insuranceType = answers?.insuranceType || answers?.type || 'motor'
+    const typeId = typeMap[insuranceType.toLowerCase()] || ''
+    const url = `${API}/curacel/products?calculate_premium=1${typeId ? `&type=${typeId}` : ''}`
+    fetch(url)
       .then(r => r.json())
       .then(d => {
-        const list: any[] = d.data?.items || d.data || d.items || d || []
-        const active = list.filter((p: any) => p.status === 'active' || !p.status)
+        const list: any[] = d.data || []
+        const active = list.filter((p: any) => p.id)
         if (active.length > 0) {
-          // Score and sort by match
           const scored = active.map((p: any) => ({
             ...p,
             match: matchScore(p, answers),
-            displayName: p.productName || p.name,
-            price: Number(p.premiumMin || p.minPremium || 0),
-            tags: [p.category, ...(p.tags || [])].filter(Boolean),
+            displayName: p.title || p.productName || p.name,
+            price: p.price || p.premium_rate || Number(p.premiumMin || 0),
+            tags: [p.product_type?.name, p.insurer?.name].filter(Boolean),
           })).sort((a: any, b: any) => b.match - a.match)
           setProducts(scored.slice(0, 4))
         } else {

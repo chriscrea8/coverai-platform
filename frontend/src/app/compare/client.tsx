@@ -5,10 +5,14 @@ import Link from 'next/link'
 import { compareApi, leadsApi } from '@/lib/api'
 
 const CATEGORIES = [
-  { id: 'motor', label: 'Motor Insurance', icon: '🚗', desc: 'Vehicle protection — Third Party & Comprehensive' },
-  { id: 'property', label: 'Fire & Burglary', icon: '🏪', desc: 'Shop, office & property protection' },
-  { id: 'health', label: 'Health Insurance', icon: '❤️', desc: 'Medical cover & HMO plans' },
-  { id: 'life', label: 'Life Insurance', icon: '🛡️', desc: 'Financial protection for your family' },
+  { id: 'motor',              label: 'Motor (3rd Party)',    icon: '🚗', desc: 'Legal minimum — covers damage you cause' },
+  { id: 'vehicle',            label: 'Comprehensive Auto',   icon: '🚙', desc: 'Full cover — your car + others' },
+  { id: 'health',             label: 'Health Insurance',     icon: '❤️', desc: 'Medical cover & HMO plans' },
+  { id: 'micro health',       label: 'Micro Health',         icon: '💊', desc: 'Affordable health cover from ₦5,000/yr' },
+  { id: 'life',               label: 'Life Insurance',       icon: '🛡️', desc: 'Financial protection for your family' },
+  { id: 'personal accident',  label: 'Personal Accident',    icon: '🦺', desc: 'Injury and disability protection' },
+  { id: 'fire & burglary',    label: 'Fire & Burglary',      icon: '🏪', desc: 'Shop, office & property protection' },
+  { id: 'goods in transit',   label: 'Goods in Transit',     icon: '📦', desc: 'Cargo and stock protection' },
 ]
 
 const ELIGIBILITY_TYPES = [
@@ -29,6 +33,36 @@ type Product = {
   coverageDetails: Record<string, any>
   isSmeProduct: boolean
   tags: string[]
+  insurer?: string
+  insurerLogo?: string
+  commissionRate?: string
+  premiumType?: string
+  premiumUnit?: string
+  frequencies?: string[]
+  benefits?: Array<{ cover: string; benefit: string }>
+}
+
+// Normalize Curacel API response to Product shape
+function normalizeCuracelProduct(p: any): Product {
+  const isRelative = p.premium_type === 'relative'
+  return {
+    id: String(p.id || p.code),
+    name: p.title || p.productName || p.name || 'Insurance Product',
+    category: p.product_type?.name || p.category || 'General',
+    premiumMin: isRelative ? (p.min_premium || 0) : (p.price || p.premium_rate || p.premiumMin || 0),
+    premiumMax: isRelative ? 0 : (p.price || p.premium_rate || p.premiumMax || 0),
+    description: p.description?.replace(/<[^>]*>/g, '') || '',
+    coverageDetails: {},
+    isSmeProduct: ['Goods in Transit', 'Marine', 'Fire and Burglary'].includes(p.product_type?.name),
+    tags: [p.product_type?.name, p.insurer?.name].filter(Boolean),
+    insurer: p.insurer?.name,
+    insurerLogo: p.insurer?.logo_url,
+    commissionRate: p.partner_commission_rate,
+    premiumType: p.premium_type,
+    premiumUnit: p.premium_rate_unit,
+    frequencies: p.premium_frequencies,
+    benefits: p.cover_benefits || [],
+  }
 }
 
 type EligibilityResult = {
@@ -72,11 +106,16 @@ function ProductCard({ product, onGetQuote }: { product: Product; onGetQuote: (p
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 18, fontWeight: 900, color: '#F4A623' }}>
-              {formatCurrency(product.premiumMin)}
+              {product.premiumType === 'relative' && product.premiumUnit === '%'
+                ? `${product.premiumMin || product.commissionRate || '~'}% of value`
+                : formatCurrency(product.premiumMin)}
             </div>
             <div style={{ fontSize: 11, color: '#6B7FA3' }}>
-              {product.premiumMax ? `– ${formatCurrency(product.premiumMax)}` : ''}/yr
+              {product.frequencies?.[0] ? `per ${product.frequencies[0]}` : '/yr'}
             </div>
+            {product.insurer && (
+              <div style={{ fontSize: 10, color: '#4A5568', marginTop: 4 }}>{product.insurer}</div>
+            )}
           </div>
         </div>
         <p style={{ color: '#8A9BBF', fontSize: 13, lineHeight: 1.6, margin: 0 }}>{product.description}</p>
@@ -163,8 +202,9 @@ export default function ComparePage() {
     setProducts([])
     try {
       const res = await compareApi.byCategory(category, 6)
-      const data = res.data?.data || res.data || []
-      setProducts(Array.isArray(data) ? data : [])
+      const raw = res.data?.data || res.data || []
+      const data = Array.isArray(raw) ? raw.map(normalizeCuracelProduct) : []
+      setProducts(data)
     } catch {
       setError('Could not load products. Please try again.')
     }
@@ -294,7 +334,8 @@ export default function ComparePage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
                   {products.map(p => {
                     const handleQuote = (prod: Product) => { setQuoteModal({ open: true, product: prod }); setLeadDone(false); setLeadForm({ name: '', phone: '' }) };
-                    return <ProductCard key={p.id} product={p as Product} onGetQuote={handleQuote} />
+                    const pc = p as Product;
+                    return <div key={pc.id}><ProductCard product={pc} onGetQuote={handleQuote} /></div>
                   })}
                 </div>
               </>

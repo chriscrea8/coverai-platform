@@ -91,9 +91,34 @@ export const chatApi = {
 
 
 export const compareApi = {
-  byCategory: (category: string, limit = 5) => api.get('/chat/compare', { params: { category, limit } }),
+  // Maps category labels to Curacel product type IDs
+  byCategory: (category: string, limit = 5) => {
+    const typeMap: Record<string, string> = {
+      motor: '2', vehicle: '10', health: '1', life: '3',
+      business: '8', property: '8', gadget: '7', travel: '9',
+      'fire & burglary': '8', 'goods in transit': '4', 'personal accident': '13',
+      'micro health': '12', 'comprehensive auto': '10', '3rd party auto': '2',
+    }
+    const typeId = typeMap[category.toLowerCase()]
+    return typeId
+      ? api.get('/curacel/products', { params: { type: typeId, per_page: limit, calculate_premium: 1 } })
+      : api.get('/curacel/products', { params: { per_page: limit, calculate_premium: 1 } })
+  },
   checkEligibility: (data: { insuranceType: string; location: string; age?: number; hasCar?: boolean; hasBusiness?: boolean }) =>
     api.post('/chat/eligibility', data),
+}
+
+export const curacelApi = {
+  getStatus: () => api.get('/curacel/status'),
+  getProductTypes: () => api.get('/curacel/product-types'),
+  getProducts: (params?: { type?: string | number; page?: number; calculate_premium?: number; per_page?: number }) =>
+    api.get('/curacel/products', { params: { calculate_premium: 1, ...params } }),
+  getProduct: (code: string) => api.get(`/curacel/products/${code}`),
+  createQuote: (dto: any) => api.post('/curacel/quote', dto),
+  convertQuote: (code: string) => api.post(`/curacel/quote/${code}/convert`),
+  getPolicies: () => api.get('/curacel/policies'),
+  submitClaim: (dto: any) => api.post('/curacel/claims', dto),
+  getWallet: () => api.get('/curacel/wallet'),
 }
 
 export const verificationApi = {

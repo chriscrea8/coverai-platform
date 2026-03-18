@@ -34,6 +34,7 @@ import { InsuranceVerificationModule } from './insurance-verification/insurance-
 import { KycModule } from './kyc/kyc.module';
 import { RenewalModule } from './renewal/renewal.module';
 import { FraudModule } from './fraud/fraud.module';
+import { CuracelModule } from './curacel/curacel.module';
 
 @Module({
   imports: [
@@ -107,6 +108,7 @@ import { FraudModule } from './fraud/fraud.module';
     KycModule,
     RenewalModule,
     FraudModule,
+    CuracelModule,
   ],
 })
 export class AppModule {}

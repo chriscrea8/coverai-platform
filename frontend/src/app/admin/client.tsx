@@ -365,6 +365,7 @@ function OverviewTab({ store, loading, setTab }: any) {
             { label: 'Review Claims',  icon: '🛡️', tab: 'claims',    note: `${s.openClaims || 0} open`, accent: '#E84545' },
             { label: 'Leads Dashboard', icon: '📊', href: '/admin/leads', note: 'Track conversions', accent: '#00C2A8' },
             { label: 'Fraud Flags', icon: '🚨', href: '/admin/fraud', note: 'Review flagged claims', accent: '#EF4444' },
+            { label: 'Curacel API', icon: '🔌', href: '/admin/curacel', note: 'Insurer integration', accent: '#7C6BFF' },
             { label: 'Add Provider',   icon: '🏦', tab: 'providers', note: 'Onboard insurer', accent: '#F4A623' },
             { label: 'Add Product',    icon: '📦', tab: 'products',  note: 'New coverage',   accent: '#00C2A8' },
             { label: 'Manage Users',   icon: '👥', tab: 'users',     note: `${s.totalUsers || 0} total`, accent: '#7C6BFF' },
