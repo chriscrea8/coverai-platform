@@ -29,7 +29,7 @@ function AuthForm() {
   const reason = params.get('reason')
   const refCode = params.get('ref') || ''
 
-  const { setTokens, setUser } = useAuthStore()
+  const { setAuth } = useAuthStore()
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', referralCode: refCode })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -52,8 +52,8 @@ function AuthForm() {
         const res = await authApi.login({ email: form.email, password: form.password })
         const d = res.data?.data || res.data
         if (d?.accessToken) {
-          setTokens(d.accessToken, d.refreshToken)
-          if (d.user) setUser(d.user)
+          if (d.user) setAuth(d.user, d.accessToken, d.refreshToken)
+          else setAuth({ id: '', name: '', email: form.email } as any, d.accessToken, d.refreshToken)
           router.push('/dashboard')
         } else {
           setError('Login failed — please check your credentials.')
@@ -69,8 +69,8 @@ function AuthForm() {
           setOtpToken(d.otpToken || d.tempToken || '')
           setOtpSent(true)
         } else if (d?.accessToken) {
-          setTokens(d.accessToken, d.refreshToken)
-          if (d.user) setUser(d.user)
+          if (d.user) setAuth(d.user, d.accessToken, d.refreshToken)
+          else setAuth({ id: '', name: '', email: form.email } as any, d.accessToken, d.refreshToken)
           router.push('/dashboard')
         } else {
           setOtpSent(true)
@@ -90,8 +90,8 @@ function AuthForm() {
       const res = await authApi.verifyEmail(otp)
       const d = res.data?.data || res.data
       if (d?.accessToken) {
-        setTokens(d.accessToken, d.refreshToken)
-        if (d.user) setUser(d.user)
+        if (d.user) setAuth(d.user, d.accessToken, d.refreshToken)
+        else setAuth({ id: '', name: '', email: form.email } as any, d.accessToken, d.refreshToken)
         router.push('/dashboard')
       } else {
         setError('Invalid OTP — please try again.')
