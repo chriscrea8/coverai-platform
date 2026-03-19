@@ -54,6 +54,7 @@ export default function CuracelAdminClient() {
           <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 18 }}>🔌 Curacel Integration</span>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={async () => { try { const r = await (await import('@/lib/api')).curacelApi.syncCatalogue(); alert(r.data?.message || 'Synced!'); await loadAll(); } catch(e: any) { alert(e.message); } }} style={{ padding: '8px 16px', borderRadius: 10, background: 'rgba(124,107,255,0.15)', border: '1px solid rgba(124,107,255,0.3)', color: '#7C6BFF', cursor: 'pointer', fontSize: 13 }}>📥 Sync to Admin</button>
           <button onClick={async () => { try { const r = await (await import('@/lib/api')).curacelApi.syncPolicies(); alert(r.data?.message || 'Synced!'); } catch {} }} style={{ padding: '8px 16px', borderRadius: 10, background: 'rgba(0,194,168,0.15)', border: '1px solid rgba(0,194,168,0.3)', color: '#00C2A8', cursor: 'pointer', fontSize: 13 }}>⟳ Sync Policies</button>
           <button onClick={loadAll} style={{ padding: '8px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', fontSize: 13 }}>↻ Refresh</button>
         </div>

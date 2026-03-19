@@ -82,23 +82,34 @@ const FALLBACK_PLANS = [
 
 function matchScore(product: any, answers: Record<string, any>): number {
   let score = 70
-  const category = (product.category || product.productType || '').toLowerCase()
-  const name = (product.productName || product.name || '').toLowerCase()
+  // Handle both internal DB products (category) and Curacel products (product_type.name)
+  const typeName = (product.product_type?.name || product.category || product.productType || '').toLowerCase()
+  const name = (product.title || product.productName || product.name || '').toLowerCase()
+  const insurer = (product.insurer?.name || '').toLowerCase()
 
-  // Business type matching
   const bt = (answers.businessType || '').toLowerCase()
-  if (bt.includes('tech') && (category === 'cyber' || name.includes('cyber'))) score += 20
-  if (bt.includes('transport') && category === 'motor') score += 20
-  if ((bt.includes('retail') || bt.includes('manufactur')) && (category === 'property' || category === 'fire')) score += 15
-  if (bt.includes('health') && category === 'health') score += 20
-
-  // Risk focus matching
   const rf = (answers.riskFocus || '').toLowerCase()
-  if (rf.includes('fire') && (category.includes('fire') || category.includes('property'))) score += 15
-  if (rf.includes('cyber') && category === 'cyber') score += 15
-  if (rf.includes('liability') && category === 'liability') score += 15
-  if (rf.includes('health') && category === 'health') score += 10
-  if (rf.includes('business') && category === 'business') score += 10
+
+  // Business type → Curacel type matching
+  if (bt.includes('transport') && (typeName.includes('auto') || typeName.includes('motor'))) score += 25
+  if (bt.includes('health') && typeName.includes('health')) score += 25
+  if ((bt.includes('retail') || bt.includes('manufactur') || bt.includes('food')) &&
+      (typeName.includes('fire') || typeName.includes('burglary') || typeName.includes('goods'))) score += 20
+  if (bt.includes('tech') && (typeName.includes('cyber') || name.includes('tech'))) score += 20
+
+  // Risk focus → Curacel type matching
+  if ((rf.includes('fire') || rf.includes('theft') || rf.includes('burglary')) &&
+      (typeName.includes('fire') || typeName.includes('burglary'))) score += 20
+  if ((rf.includes('health') || rf.includes('accident')) &&
+      (typeName.includes('health') || typeName.includes('accident') || typeName.includes('life'))) score += 20
+  if (rf.includes('business') && (typeName.includes('fire') || typeName.includes('goods'))) score += 10
+
+  // Premium preference — favour cheaper for micro businesses
+  const rev = (answers.revenueRange || '').toLowerCase()
+  if (rev.includes('500k') || rev.includes('below')) {
+    if ((product.price || 0) <= 15000) score += 10
+    if ((product.price || 0) > 50000) score -= 10
+  }
 
   return Math.min(score, 98)
 }
@@ -140,20 +151,23 @@ export default function CoveragePage() {
   useEffect(() => {
     if (!done) return
     setLoadingProducts(true)
-    // Map user answers to Curacel product type
-    const typeMap: Record<string, string> = {
-      motor: '2',       // 3rd Party Auto
-      vehicle: '10',    // Comprehensive Auto
-      health: '1',      // Health
-      life: '3',        // Life
-      business: '8',    // Fire and Burglary
-      property: '8',
-      gadget: '7',
-      travel: '9',
-      goods: '4',
-    }
-    const insuranceType = answers?.insuranceType || answers?.type || 'motor'
-    const typeId = typeMap[insuranceType.toLowerCase()] || ''
+    // Derive Curacel product type from wizard answers
+    // businessType: Retail Shop | Manufacturing | Tech/Services | Transport/Logistics | Food & Hospitality | Health/Medical
+    // riskFocus: Fire & Damage | Theft & Burglary | Legal Liability | Cyber | Business Interruption | Staff Health & Accidents
+    const bt = (answers.businessType || '').toLowerCase()
+    const rf = (answers.riskFocus || '').toLowerCase()
+
+    let typeId = ''
+    // Primary: derive from business type
+    if (bt.includes('transport')) typeId = '2'           // 3rd Party Auto
+    else if (bt.includes('health') || bt.includes('medical')) typeId = '1'  // Health
+    // Secondary: derive from risk focus
+    else if (rf.includes('fire') || rf.includes('theft') || rf.includes('burglary')) typeId = '8'  // Fire & Burglary
+    else if (rf.includes('health') || rf.includes('accident')) typeId = '1'  // Health
+    else if (rf.includes('business') || rf.includes('interruption')) typeId = '8'  // Fire & Burglary (closest)
+    // Fallback: fetch all products if no specific match
+    // typeId stays '' → fetches all products
+
     const url = `${API}/curacel/products?calculate_premium=1${typeId ? `&type=${typeId}` : ''}`
     fetch(url)
       .then(r => r.json())
@@ -318,14 +332,36 @@ export default function CoveragePage() {
                 style={{ background: 'rgba(13,27,62,.8)', border: i === 0 ? '1px solid rgba(244,166,35,.3)' : '1px solid rgba(255,255,255,.08)' }}>
 
                 <div className="flex justify-between items-start gap-3 mb-2">
-                  <h3 className="font-syne font-bold text-base md:text-lg leading-tight">{p.displayName || p.name}</h3>
+                  <div style={{ flex: 1 }}>
+                    <h3 className="font-syne font-bold text-base md:text-lg leading-tight">{p.displayName || p.title || p.name}</h3>
+                    {/* Show insurer name for Curacel products */}
+                    {p.insurer?.name && (
+                      <div style={{ fontSize: 12, color: '#6B7FA3', marginTop: 2 }}>
+                        🏛️ {p.insurer.name}
+                      </div>
+                    )}
+                  </div>
                   <span className="px-2.5 py-1 rounded-full text-xs font-bold shrink-0"
                     style={{ background: 'rgba(244,166,35,.15)', color: '#F4A623', border: '1px solid rgba(244,166,35,.3)' }}>
                     {i === 0 ? 'Best Match' : i === 1 ? 'Popular' : 'Recommended'}
                   </span>
                 </div>
 
-                <p className="text-muted text-sm mb-3 leading-relaxed">{p.description || p.desc}</p>
+                <p className="text-muted text-sm mb-3 leading-relaxed">
+                  {(p.description || p.desc || '').replace(/<[^>]*>/g, '').slice(0, 120) || 'Comprehensive insurance coverage for your business needs.'}
+                </p>
+
+                {/* Cover benefits from Curacel */}
+                {p.cover_benefits && p.cover_benefits.length > 0 && (
+                  <div style={{ marginBottom: 12 }}>
+                    {p.cover_benefits.slice(0, 2).map((b: any, bi: number) => (
+                      <div key={bi} style={{ fontSize: 12, color: '#6B7FA3', marginBottom: 3, display: 'flex', gap: 6 }}>
+                        <span style={{ color: '#2EC97E' }}>✓</span>
+                        <span>{b.benefit?.slice(0, 80) || b.cover}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 <div className="flex gap-2 flex-wrap mb-4">
                   {(p.tags || []).slice(0, 4).map((t: string) => (
@@ -345,8 +381,10 @@ export default function CoveragePage() {
                       return (
                         <>
                           <div className="font-syne font-black text-xl md:text-2xl text-accent">
-                            ₦{installment.toLocaleString()}
-                            <span className="text-muted text-sm font-normal">/{cfg.label.toLowerCase().replace('ly','').replace('ual','')}</span>
+                            {p.premium_type === 'relative' && p.premium_rate_unit === '%'
+                              ? <>{p.premium_rate}% <span className="text-muted text-base font-normal">of asset value</span></>
+                              : <>₦{installment.toLocaleString()}<span className="text-muted text-sm font-normal">/{cfg.label.toLowerCase().replace('ly','').replace('ual','')}</span></>
+                            }
                           </div>
                           {!isAnnual && (
                             <div className="text-xs mt-0.5" style={{ color: '#8492B4' }}>

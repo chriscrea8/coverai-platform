@@ -125,6 +125,7 @@ export const curacelApi = {
   getOrder: (id: string) => api.get(`/curacel/orders/${id}`),
   getPolicyDocument: (id: string) => api.get(`/curacel/policies/${id}/document`),
   syncPolicies: () => api.post('/curacel/sync-policies'),
+  syncCatalogue: () => api.post('/curacel/sync-catalogue'),
 }
 
 export const verificationApi = {

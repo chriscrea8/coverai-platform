@@ -7,6 +7,8 @@ import { Policy, PolicyStatus } from '../policies/policy.entity';
 import { User } from '../users/user.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { v4 as uuidv4 } from 'uuid';
+import { InsuranceProduct } from '../insurance-products/insurance-product.entity';
+import { InsuranceProvider } from '../insurance-providers/insurance-provider.entity';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CURACEL ORDER SERVICE
@@ -25,6 +27,8 @@ export class CuracelOrderService {
   constructor(
     @InjectRepository(Policy) private readonly policyRepo: Repository<Policy>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
+    @InjectRepository(InsuranceProduct) private readonly productRepo: Repository<InsuranceProduct>,
+    @InjectRepository(InsuranceProvider) private readonly providerRepo: Repository<InsuranceProvider>,
     private readonly curacelService: CuracelService,
     private readonly notificationsService: NotificationsService,
     private readonly configService: ConfigService,
@@ -380,5 +384,139 @@ export class CuracelOrderService {
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ messaging_product: 'whatsapp', to: phone, type: 'text', text: { body: text } }),
     });
+  }
+  // ── SYNC CURACEL CATALOGUE TO INTERNAL DB ───────────────────────────────
+  // This makes Curacel products visible in the Admin Products & Providers tabs
+  async syncCatalogueToInternalDB(): Promise<{ providers: number; products: number; message: string }> {
+    this.logger.log('Starting Curacel catalogue sync to internal DB...');
+    let providerCount = 0;
+    let productCount = 0;
+
+    try {
+      // Step 1: Fetch all products from Curacel
+      const allProducts: any[] = [];
+      for (const typeId of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]) {
+        try {
+          const res = await this.curacelService.getProducts({ type: typeId, calculate_premium: 1 });
+          const prods = res?.data || [];
+          allProducts.push(...prods);
+        } catch {}
+      }
+
+      // Deduplicate by code
+      const seen = new Set<string>();
+      const unique = allProducts.filter(p => {
+        if (seen.has(p.code)) return false;
+        seen.add(p.code);
+        return true;
+      });
+
+      // Step 2: Sync providers (insurers)
+      const insurerMap = new Map<string, string>(); // code -> internal UUID
+      const insurers = [...new Map(unique.map(p => [p.insurer?.code, p.insurer])).values()].filter(Boolean);
+
+      for (const insurer of insurers) {
+        if (!insurer?.code) continue;
+        const slug = `curacel-${insurer.code.toLowerCase()}`;
+        let provider = await this.providerRepo.findOne({ where: { slug } });
+
+        if (!provider) {
+          provider = this.providerRepo.create({
+            name: insurer.name,
+            slug,
+            logoUrl: insurer.logo_url,
+            contactEmail: 'support@curacel.ai',
+            description: `${insurer.name} — via Curacel Grow API`,
+            status: 'active',
+            syncStatus: 'success',
+            lastSyncedAt: new Date(),
+          });
+        } else {
+          provider.name = insurer.name;
+          provider.logoUrl = insurer.logo_url || provider.logoUrl;
+          provider.status = 'active';
+          provider.syncStatus = 'success';
+          provider.lastSyncedAt = new Date();
+        }
+
+        await this.providerRepo.save(provider);
+        insurerMap.set(insurer.code, provider.id);
+        providerCount++;
+      }
+
+      // Step 3: Sync products
+      for (const p of unique) {
+        if (!p.code || !p.title) continue;
+        const productCode = `curacel-${p.code}`;
+        const providerId = insurerMap.get(p.insurer?.code) || null;
+
+        // Map Curacel type to internal category
+        const categoryMap: Record<string, string> = {
+          'Health': 'health', '3rd Party Auto': 'motor', 'Comprehensive Auto': 'motor',
+          'Life': 'life', 'Goods in Transit': 'property', 'Marine': 'property',
+          'Credit Life': 'life', 'Gadget': 'property', 'Fire and Burglary': 'property',
+          'Travel': 'health', 'Personal Accident': 'health', 'Micro Health': 'health',
+          'Investment Life': 'life', 'Education investment': 'life',
+        };
+        const category = categoryMap[p.product_type?.name] || 'general';
+
+        // Calculate premiums
+        const isRelative = p.premium_type === 'relative';
+        const premiumMin = isRelative ? (p.min_premium || 0) : (p.price || p.premium_rate || 0);
+        const premiumMax = isRelative ? 0 : (p.price || p.premium_rate || 0);
+
+        let product = await this.productRepo.findOne({ where: { productCode } });
+
+        if (!product) {
+          product = this.productRepo.create({
+            productCode,
+            providerId: providerId || undefined,
+            productName: p.title,
+            category,
+            description: `${p.title} by ${p.insurer?.name || 'Curacel'}. ${p.product_type?.name || ''} insurance.`,
+            premiumMin,
+            premiumMax,
+            commissionRate: parseFloat(p.partner_commission_rate || '0') / 100,
+            durationMonths: 12,
+            isSmeProduct: ['Goods in Transit', 'Marine', 'Fire and Burglary'].includes(p.product_type?.name),
+            status: 'active',
+            tags: [p.product_type?.name, p.insurer?.name].filter(Boolean),
+            coverageDetails: {
+              curacelCode: p.code,
+              curacelId: p.id,
+              premiumType: p.premium_type,
+              premiumRate: p.premium_rate,
+              premiumRateUnit: p.premium_rate_unit,
+              frequencies: p.premium_frequencies,
+              benefits: p.cover_benefits || [],
+            },
+          });
+        } else {
+          product.productName = p.title;
+          product.premiumMin = premiumMin;
+          product.premiumMax = premiumMax;
+          product.commissionRate = parseFloat(p.partner_commission_rate || '0') / 100;
+          product.status = 'active';
+          product.tags = [p.product_type?.name, p.insurer?.name].filter(Boolean);
+          if (providerId) product.providerId = providerId;
+        }
+
+        await this.productRepo.save(product);
+        productCount++;
+      }
+
+      // Update provider product counts
+      for (const [code, id] of insurerMap.entries()) {
+        const count = await this.productRepo.count({ where: { providerId: id } });
+        await this.providerRepo.update(id, { syncedProductCount: count });
+      }
+
+      this.logger.log(`Curacel sync complete: ${providerCount} providers, ${productCount} products`);
+      return { providers: providerCount, products: productCount, message: `✅ Synced ${productCount} products from ${providerCount} insurers into admin catalogue` };
+
+    } catch (e) {
+      this.logger.error('Curacel catalogue sync error: ' + e.message);
+      return { providers: providerCount, products: productCount, message: 'Sync failed: ' + e.message };
+    }
   }
 }

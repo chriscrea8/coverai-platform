@@ -128,4 +128,12 @@ export class CuracelWebhookController {
   syncPolicies() {
     return this.orderService.syncPoliciesFromCuracel();
   }
+
+  // ── SYNC CATALOGUE (products + providers → internal DB → Admin visible) ──
+  @Post('sync-catalogue')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'Import all Curacel products + insurers into admin Products & Providers tabs' })
+  syncCatalogue() {
+    return this.orderService.syncCatalogueToInternalDB();
+  }
 }
