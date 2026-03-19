@@ -1,8 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Navbar from '@/components/Navbar'
 import Link from 'next/link'
-import { compareApi, leadsApi } from '@/lib/api'
+import { compareApi, leadsApi, api } from '@/lib/api'
 
 const CATEGORIES = [
   { id: 'motor',              label: 'Motor (3rd Party)',    icon: '🚗', desc: 'Legal minimum — covers damage you cause' },
@@ -63,12 +63,6 @@ function normalizeCuracelProduct(p: any): Product {
     frequencies: p.premium_frequencies,
     benefits: p.cover_benefits || [],
   }
-}
-
-type EligibilityResult = {
-  eligible: boolean
-  products: any[]
-  message: string
 }
 
 function formatCurrency(n: number) {
@@ -178,22 +172,31 @@ function ProductCard({ product, onGetQuote }: { product: Product; onGetQuote: (p
 }
 
 export default function ComparePage() {
-  const [activeTab, setActiveTab] = useState<'compare' | 'eligibility'>('compare')
+  const [activeTab, setActiveTab] = useState<'compare'>('compare')
   const [selectedCategory, setSelectedCategory] = useState('')
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-
-  // Eligibility state
-  const [eligibilityForm, setEligibilityForm] = useState({ insuranceType: '', location: '', age: '', hasCar: false, hasBusiness: false })
-  const [eligibilityResult, setEligibilityResult] = useState<EligibilityResult | null>(null)
-  const [eligLoading, setEligLoading] = useState(false)
 
   // Lead capture modal
   const [quoteModal, setQuoteModal] = useState<{ open: boolean; product: Product | null }>({ open: false, product: null })
   const [leadForm, setLeadForm] = useState({ name: '', phone: '' })
   const [leadSubmitting, setLeadSubmitting] = useState(false)
   const [leadDone, setLeadDone] = useState(false)
+  const [userProfile, setUserProfile] = useState<{ name: string; phone: string } | null>(null)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  // Auto-load user profile if logged in
+  useEffect(() => {
+    const token = localStorage.getItem('access_token')
+    setIsLoggedIn(!!token)
+    if (token) {
+      api.get('/users/profile').then(r => {
+        const u = r.data?.data || r.data
+        if (u) setUserProfile({ name: u.name || '', phone: u.phone || '' })
+      }).catch(() => {})
+    }
+  }, [])
 
   const fetchProducts = async (category: string) => {
     setSelectedCategory(category)
@@ -211,38 +214,24 @@ export default function ComparePage() {
     setLoading(false)
   }
 
-  const checkEligibility = async () => {
-    if (!eligibilityForm.insuranceType || !eligibilityForm.location) return
-    setEligLoading(true)
-    setEligibilityResult(null)
-    try {
-      const res = await compareApi.checkEligibility({
-        insuranceType: eligibilityForm.insuranceType,
-        location: eligibilityForm.location,
-        age: eligibilityForm.age ? parseInt(eligibilityForm.age) : undefined,
-        hasCar: eligibilityForm.hasCar,
-        hasBusiness: eligibilityForm.hasBusiness,
-      })
-      setEligibilityResult(res.data?.data || res.data)
-    } catch {
-      setEligibilityResult({ eligible: false, products: [], message: 'Could not check eligibility. Please try again.' })
-    }
-    setEligLoading(false)
-  }
+
 
   const submitLead = async () => {
-    if (!leadForm.name || !leadForm.phone) return
+    const name = userProfile?.name || leadForm.name
+    const phone = userProfile?.phone || leadForm.phone
+    if (!name && !phone && !isLoggedIn) return
     setLeadSubmitting(true)
     try {
+      const product = quoteModal.product as any
       await leadsApi.create({
-        insuranceType: quoteModal.product?.category || 'general',
-        name: leadForm.name,
-        phone: leadForm.phone,
-        notes: `Quote requested for: ${quoteModal.product?.name}`,
+        insuranceType: product?.category || product?.product_type?.name || 'general',
+        name: name || 'Anonymous',
+        phone: phone || '',
+        notes: `Quote requested for: ${product?.name || product?.title}. Insurer: ${product?.insurer || product?.insurer?.name || 'N/A'}. Price: ${product?.premiumMin || product?.price || 'N/A'}`,
       })
       setLeadDone(true)
     } catch {
-      setLeadDone(true) // Still show success UI even if API fails
+      setLeadDone(true)
     }
     setLeadSubmitting(false)
   }
@@ -280,7 +269,7 @@ export default function ComparePage() {
         <div style={{ display: 'flex', gap: 8, marginBottom: 32, background: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: 6, maxWidth: 400, margin: '0 auto 32px' }}>
           {[
             { id: 'compare', label: '📊 Compare Products' },
-            { id: 'eligibility', label: '✅ Check Eligibility' },
+
           ].map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} style={{
               flex: 1, padding: '10px', borderRadius: 10, fontSize: 13, fontWeight: 600,
@@ -358,96 +347,6 @@ export default function ComparePage() {
           </>
         )}
 
-        {/* ELIGIBILITY TAB */}
-        {activeTab === 'eligibility' && (
-          <div style={{ maxWidth: 600, margin: '0 auto' }}>
-            <div style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 24, padding: 32 }}>
-              <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Eligibility Check</h2>
-              <p style={{ color: '#6B7FA3', fontSize: 14, marginBottom: 28 }}>Answer a few quick questions to see which products you qualify for.</p>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: '#8A9BBF', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 8 }}>
-                    Insurance Type *
-                  </label>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {ELIGIBILITY_TYPES.map(t => (
-                      <button key={t.id} onClick={() => setEligibilityForm(f => ({ ...f, insuranceType: t.id }))} style={{
-                        padding: '8px 16px', borderRadius: 20, fontSize: 13, cursor: 'pointer',
-                        fontFamily: 'inherit', border: 'none', transition: 'all 0.2s',
-                        background: eligibilityForm.insuranceType === t.id ? '#F4A623' : 'rgba(255,255,255,0.06)',
-                        color: eligibilityForm.insuranceType === t.id ? '#0A0F1E' : '#6B7FA3',
-                        fontWeight: eligibilityForm.insuranceType === t.id ? 700 : 400,
-                      }}>{t.label}</button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: '#8A9BBF', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 8 }}>Location (State) *</label>
-                  <input style={inputSty} placeholder="e.g. Lagos, Abuja, Port Harcourt"
-                    value={eligibilityForm.location} onChange={e => setEligibilityForm(f => ({ ...f, location: e.target.value }))} />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: '#8A9BBF', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 8 }}>Age</label>
-                  <input style={inputSty} type="number" placeholder="Your age" min="18" max="99"
-                    value={eligibilityForm.age} onChange={e => setEligibilityForm(f => ({ ...f, age: e.target.value }))} />
-                </div>
-
-                <div style={{ display: 'flex', gap: 16 }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1, padding: '12px 16px', borderRadius: 12, background: eligibilityForm.hasCar ? 'rgba(244,166,35,0.1)' : 'rgba(255,255,255,0.04)', border: eligibilityForm.hasCar ? '1px solid rgba(244,166,35,0.3)' : '1px solid rgba(255,255,255,0.08)' }}>
-                    <input type="checkbox" checked={eligibilityForm.hasCar} onChange={e => setEligibilityForm(f => ({ ...f, hasCar: e.target.checked }))} style={{ width: 16, height: 16, accentColor: '#F4A623' }} />
-                    <span style={{ fontSize: 14 }}>I have a car 🚗</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1, padding: '12px 16px', borderRadius: 12, background: eligibilityForm.hasBusiness ? 'rgba(244,166,35,0.1)' : 'rgba(255,255,255,0.04)', border: eligibilityForm.hasBusiness ? '1px solid rgba(244,166,35,0.3)' : '1px solid rgba(255,255,255,0.08)' }}>
-                    <input type="checkbox" checked={eligibilityForm.hasBusiness} onChange={e => setEligibilityForm(f => ({ ...f, hasBusiness: e.target.checked }))} style={{ width: 16, height: 16, accentColor: '#F4A623' }} />
-                    <span style={{ fontSize: 14 }}>I run a business 🏪</span>
-                  </label>
-                </div>
-
-                <button onClick={checkEligibility} disabled={eligLoading || !eligibilityForm.insuranceType || !eligibilityForm.location} style={{
-                  padding: '14px', borderRadius: 14, background: '#F4A623', border: 'none',
-                  color: '#0A0F1E', fontWeight: 800, fontSize: 15, cursor: 'pointer',
-                  fontFamily: 'Syne, sans-serif', opacity: (!eligibilityForm.insuranceType || !eligibilityForm.location) ? 0.5 : 1,
-                }}>
-                  {eligLoading ? 'Checking...' : 'Check Eligibility →'}
-                </button>
-              </div>
-
-              {/* Results */}
-              {eligibilityResult && (
-                <div style={{ marginTop: 28, padding: 20, borderRadius: 16, background: eligibilityResult.eligible ? 'rgba(0,194,168,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${eligibilityResult.eligible ? 'rgba(0,194,168,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
-                  <div style={{ fontSize: 20, marginBottom: 8 }}>{eligibilityResult.eligible ? '✅' : '❌'}</div>
-                  <p style={{ fontSize: 15, fontWeight: 600, marginBottom: 12, color: eligibilityResult.eligible ? '#00C2A8' : '#EF4444' }}>
-                    {eligibilityResult.message}
-                  </p>
-                  {eligibilityResult.products.length > 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {eligibilityResult.products.map((p: any) => (
-                        <div key={p.id} style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                          <div style={{ fontWeight: 700, marginBottom: 4 }}>{p.name}</div>
-                          <div style={{ fontSize: 13, color: '#6B7FA3' }}>{p.description}</div>
-                          <div style={{ fontSize: 13, color: '#F4A623', marginTop: 6, fontWeight: 700 }}>
-                            {formatCurrency(p.premiumMin)}{p.premiumMax ? ` – ${formatCurrency(p.premiumMax)}` : ''}/yr
-                          </div>
-                        </div>
-                      ))}
-                      <Link href="/coverage" style={{ padding: '12px', borderRadius: 12, background: '#F4A623', color: '#0A0F1E', fontWeight: 700, textDecoration: 'none', textAlign: 'center', fontFamily: 'Syne, sans-serif', marginTop: 8, display: 'block' }}>
-                        Get Covered Now →
-                      </Link>
-                    </div>
-                  )}
-                  {!eligibilityResult.eligible && (
-                    <Link href="/chat" style={{ padding: '12px', borderRadius: 12, background: 'rgba(255,255,255,0.08)', color: '#fff', fontWeight: 600, textDecoration: 'none', textAlign: 'center', display: 'block', marginTop: 12 }}>
-                      Ask ARIA for Help 🤖
-                    </Link>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Quote Modal */}
@@ -469,25 +368,59 @@ export default function ComparePage() {
             ) : (
               <>
                 <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: 20, fontWeight: 800, marginBottom: 6 }}>Get a Quote</h3>
-                <p style={{ color: '#6B7FA3', fontSize: 14, marginBottom: 24 }}>
-                  We'll connect you with a specialist for <strong style={{ color: '#fff' }}>{quoteModal.product?.name}</strong>.
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <div>
-                    <label style={{ fontSize: 12, fontWeight: 700, color: '#8A9BBF', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 7 }}>Your Name *</label>
-                    <input style={inputSty} placeholder="Chioma Okonkwo" value={leadForm.name} onChange={e => setLeadForm(f => ({ ...f, name: e.target.value }))} />
+
+                {/* Product summary */}
+                <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(26,58,143,0.25)', border: '1px solid rgba(26,58,143,0.4)', marginBottom: 20 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{(quoteModal.product as any)?.title || quoteModal.product?.name}</div>
+                  {(quoteModal.product as any)?.insurer?.name && <div style={{ fontSize: 12, color: '#6B7FA3', marginTop: 2 }}>🏛️ {(quoteModal.product as any).insurer.name}</div>}
+                  <div style={{ fontSize: 13, color: '#F4A623', fontWeight: 700, marginTop: 4 }}>
+                    {(quoteModal.product as any)?.premium_type === 'relative'
+                      ? `${(quoteModal.product as any)?.premium_rate}% of asset value/yr`
+                      : `₦${Number((quoteModal.product as any)?.premiumMin || (quoteModal.product as any)?.price || 0).toLocaleString()}/yr`}
                   </div>
-                  <div>
-                    <label style={{ fontSize: 12, fontWeight: 700, color: '#8A9BBF', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 7 }}>Phone Number *</label>
-                    <input style={inputSty} type="tel" placeholder="+2348012345678" value={leadForm.phone} onChange={e => setLeadForm(f => ({ ...f, phone: e.target.value }))} />
+                </div>
+
+                {isLoggedIn && userProfile ? (
+                  // Logged-in: show auto-populated details, no form needed
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(46,201,126,0.1)', border: '1px solid rgba(46,201,126,0.3)', marginBottom: 12 }}>
+                      <div style={{ fontSize: 12, color: '#2EC97E', marginBottom: 6, fontWeight: 700 }}>✓ Your details (from profile)</div>
+                      <div style={{ fontSize: 14, color: '#fff', fontWeight: 600 }}>{userProfile.name}</div>
+                      {userProfile.phone && <div style={{ fontSize: 13, color: '#6B7FA3' }}>{userProfile.phone}</div>}
+                    </div>
+                    <p style={{ color: '#6B7FA3', fontSize: 13, lineHeight: 1.6 }}>
+                      A CoverAI specialist will contact you within 24 hours with a personalised quote.
+                    </p>
                   </div>
-                  <button onClick={submitLead} disabled={leadSubmitting || !leadForm.name || !leadForm.phone} style={{
+                ) : (
+                  // Not logged in: show form
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+                    <p style={{ color: '#6B7FA3', fontSize: 13, margin: 0 }}>Enter your details and we'll get back to you with the best rate.</p>
+                    <div>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: '#8A9BBF', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>Your Name</label>
+                      <input style={inputSty} placeholder="Chioma Okonkwo" value={leadForm.name} onChange={e => setLeadForm(f => ({ ...f, name: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: '#8A9BBF', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>Phone Number</label>
+                      <input style={inputSty} type="tel" placeholder="+2348012345678" value={leadForm.phone} onChange={e => setLeadForm(f => ({ ...f, phone: e.target.value }))} />
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <button onClick={submitLead} disabled={leadSubmitting || (!isLoggedIn && !leadForm.name)} style={{
                     padding: '13px', borderRadius: 12, background: '#F4A623', border: 'none',
                     color: '#0A0F1E', fontWeight: 800, fontSize: 15, cursor: 'pointer',
-                    fontFamily: 'Syne, sans-serif', opacity: (!leadForm.name || !leadForm.phone) ? 0.5 : 1,
+                    fontFamily: 'Syne, sans-serif',
+                    opacity: (leadSubmitting || (!isLoggedIn && !leadForm.name)) ? 0.5 : 1,
                   }}>
-                    {leadSubmitting ? 'Submitting...' : 'Request Quote →'}
+                    {leadSubmitting ? 'Submitting...' : '🎯 Request Quote →'}
                   </button>
+                  {!isLoggedIn && (
+                    <a href="/auth?mode=register" style={{ padding: '10px', borderRadius: 12, background: 'rgba(26,58,143,0.3)', border: '1px solid rgba(26,58,143,0.5)', color: '#7B9FE0', fontWeight: 600, fontSize: 13, textAlign: 'center', textDecoration: 'none', display: 'block' }}>
+                      Sign up for faster quotes →
+                    </a>
+                  )}
                   <button onClick={() => setQuoteModal({ open: false, product: null })} style={{ background: 'none', border: 'none', color: '#6B7FA3', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
                     Cancel
                   </button>

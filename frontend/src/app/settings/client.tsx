@@ -456,19 +456,27 @@ function SecurityTab({ profile, token, showToast, setProfile }: any) {
 // ─── INSTANT VERIFY CARD ────────────────────────────────────────────────────
 function InstantVerifyCard({ item, token, showToast, setProfile }: any) {
   const [value, setValue] = useState('')
+  const [dob, setDob] = useState('')
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+  const [result, setResult] = useState<any>(null)
+
+  const isDigitOnly = item.length === 11
+  const isReady = isDigitOnly ? value.length === 11 : value.length >= 6
 
   const verify = async () => {
-    if (!value || value.length !== 11 || !/^\d+$/.test(value)) {
-      showToast(`${item.type} must be exactly 11 digits`, false); return
-    }
+    if (!isReady) return
+    if (isDigitOnly && !/^\d+$/.test(value)) { showToast(`${item.type} must be digits only`, false); return }
     setLoading(true)
     try {
-      const res = await apiFetch(token, 'POST', item.endpoint, { [item.field]: value })
+      const body: any = { [item.field]: value }
+      if (dob) body.dob = dob
+      const res = await apiFetch(token, 'POST', item.endpoint, body)
       if (res.success) {
         setDone(true)
-        setProfile((p: any) => ({ ...p, kycStatus: item.type === 'NIN' ? 'nin_verified' : 'bvn_verified' }))
+        setResult(res.data)
+        const status = item.type === 'NIN' ? 'nin_verified' : item.type === 'BVN' ? 'bvn_verified' : 'kyc_verified'
+        setProfile((p: any) => ({ ...p, kycStatus: status }))
         showToast(`${item.type} verified successfully! ✅`)
       } else {
         showToast(res.message || `${item.type} verification failed`, false)
@@ -479,19 +487,27 @@ function InstantVerifyCard({ item, token, showToast, setProfile }: any) {
 
   return (
     <div className="p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-      <div className="font-syne font-bold text-sm mb-1">{done ? '✅' : '🪪'} {item.type} Verification</div>
+      <div className="font-syne font-bold text-sm mb-1">{done ? '✅' : '🪪'} {item.type}</div>
       <div className="text-muted text-xs mb-3">{item.desc}</div>
       {done ? (
-        <div className="text-sm font-bold" style={{ color: '#2EC97E' }}>Verified ✓</div>
+        <div>
+          <div className="text-sm font-bold mb-1" style={{ color: '#2EC97E' }}>Verified ✓</div>
+          {result?.name && <div className="text-xs text-muted">{result.name}</div>}
+        </div>
       ) : (
         <>
-          <input value={value} onChange={e => setValue(e.target.value.replace(/\D/g, '').slice(0, 11))}
+          <input value={value}
+            onChange={e => setValue(isDigitOnly ? e.target.value.replace(/\D/g, '').slice(0, 11) : e.target.value.toUpperCase())}
             placeholder={item.placeholder}
             className="w-full px-3 py-2 rounded-lg text-sm mb-2 outline-none"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }} />
-          <button onClick={verify} disabled={loading || value.length !== 11}
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', letterSpacing: isDigitOnly ? '2px' : 'normal' }} />
+          <input value={dob} onChange={e => setDob(e.target.value)} type="date"
+            placeholder="Date of birth (optional)"
+            className="w-full px-3 py-2 rounded-lg text-sm mb-2 outline-none"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#aaa', fontSize: 12 }} />
+          <button onClick={verify} disabled={loading || !isReady}
             className="w-full py-2 rounded-lg text-xs font-bold"
-            style={{ background: '#F4A623', color: '#0A0F1E', opacity: value.length !== 11 ? 0.5 : 1, cursor: value.length !== 11 ? 'not-allowed' : 'pointer' }}>
+            style={{ background: '#F4A623', color: '#0A0F1E', opacity: !isReady ? 0.5 : 1, cursor: !isReady ? 'not-allowed' : 'pointer' }}>
             {loading ? 'Verifying...' : `Verify ${item.type}`}
           </button>
         </>
@@ -557,11 +573,15 @@ function KycTab({ profile, token, showToast, setProfile }: any) {
           <p className="text-muted text-sm mb-4">Verify instantly using your National Identification Number (NIN) or Bank Verification Number (BVN). Results in seconds.</p>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { type: 'NIN', desc: '11-digit National ID', placeholder: 'Enter your 11-digit NIN', endpoint: '/users/verify-identity/nin', field: 'nin' },
-              { type: 'BVN', desc: '11-digit Bank ID', placeholder: 'Enter your 11-digit BVN', endpoint: '/users/verify-identity/bvn', field: 'bvn' },
+              { type: 'NIN', desc: '11-digit National ID (NIMC)', placeholder: 'Enter 11-digit NIN', endpoint: '/users/verify-identity/nin', field: 'nin', length: 11 },
+              { type: 'BVN', desc: '11-digit Bank Verification Number', placeholder: 'Enter 11-digit BVN', endpoint: '/users/verify-identity/bvn', field: 'bvn', length: 11 },
+              { type: "Driver's Licence", desc: 'FRSC Drivers Licence', placeholder: 'e.g. FKJ09876AB', endpoint: '/users/verify-identity/drivers-licence', field: 'licenceNumber', length: 0 },
             ].map(item => (
               <InstantVerifyCard key={item.type} item={item} token={token} showToast={showToast} setProfile={setProfile} />
             ))}
+          </div>
+          <div style={{ marginTop: 10, fontSize: 11, color: '#4A5568', textAlign: 'center' }}>
+            🔒 Powered by <strong style={{ color: '#F4A623' }}>VerifyMe Nigeria</strong> · Test: NIN/BVN <code>10000000001</code>
           </div>
         </div>
       )}

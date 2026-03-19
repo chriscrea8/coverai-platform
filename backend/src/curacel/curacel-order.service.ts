@@ -1,4 +1,5 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -385,6 +386,17 @@ export class CuracelOrderService {
       body: JSON.stringify({ messaging_product: 'whatsapp', to: phone, type: 'text', text: { body: text } }),
     });
   }
+
+  // ── AUTO-SYNC CRON: runs every 6 hours ───────────────────────────────────
+  // Keeps the internal DB in sync with Curacel — picks up new products,
+  // updated premiums, new insurers, deactivated products automatically.
+  @Cron('0 */6 * * *', { name: 'curacel-catalogue-sync', timeZone: 'Africa/Lagos' })
+  async autoSyncCatalogue() {
+    this.logger.log('⏰ Curacel auto-sync cron triggered');
+    const result = await this.syncCatalogueToInternalDB();
+    this.logger.log(`Curacel auto-sync: ${result.message}`);
+  }
+
   // ── SYNC CURACEL CATALOGUE TO INTERNAL DB ───────────────────────────────
   // This makes Curacel products visible in the Admin Products & Providers tabs
   async syncCatalogueToInternalDB(): Promise<{ providers: number; products: number; message: string }> {

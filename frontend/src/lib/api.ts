@@ -134,7 +134,8 @@ export const verificationApi = {
   sendPhoneOtp: (phone: string) => api.post('/users/verify-identity/phone/send-otp', { phone }),
   verifyPhoneOtp: (otp: string) => api.post('/users/verify-identity/phone/verify-otp', { otp }),
   verifyNIN: (nin: string) => api.post('/users/verify-identity/nin', { nin }),
-  verifyBVN: (bvn: string) => api.post('/users/verify-identity/bvn', { bvn }),
+  verifyBVN: (bvn: string, dob?: string) => api.post('/users/verify-identity/bvn', { bvn, dob }),
+  verifyDriversLicence: (licenceNumber: string, dob?: string) => api.post('/users/verify-identity/drivers-licence', { licenceNumber, dob }),
 }
 
 export const renewalApi = {

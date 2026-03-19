@@ -10,7 +10,7 @@ export class KycController {
   constructor(private readonly kycService: KycService) {}
 
   @Get('status')
-  @ApiOperation({ summary: 'Get my verification status (phone, NIN, BVN)' })
+  @ApiOperation({ summary: 'Get my KYC verification status' })
   getStatus(@Req() req: any) {
     return this.kycService.getVerificationStatus(req.user.id);
   }
@@ -18,7 +18,6 @@ export class KycController {
   @Post('phone/send-otp')
   @ApiOperation({ summary: 'Send OTP to phone for verification' })
   sendPhoneOtp(@Req() req: any, @Body() body: { phone: string }) {
-    if (!body.phone) throw new Error('Phone number is required');
     return this.kycService.sendPhoneOtp(req.user.id, body.phone);
   }
 
@@ -29,14 +28,20 @@ export class KycController {
   }
 
   @Post('nin')
-  @ApiOperation({ summary: 'Verify National Identification Number (NIN)' })
-  verifyNIN(@Req() req: any, @Body() body: { nin: string }) {
-    return this.kycService.verifyNIN(req.user.id, body.nin);
+  @ApiOperation({ summary: 'Verify NIN via VerifyMe Nigeria' })
+  verifyNIN(@Req() req: any, @Body() body: { nin: string; dob?: string; firstname?: string; lastname?: string }) {
+    return this.kycService.verifyNIN(req.user.id, body.nin, body.dob, body.firstname, body.lastname);
   }
 
   @Post('bvn')
-  @ApiOperation({ summary: 'Verify Bank Verification Number (BVN)' })
-  verifyBVN(@Req() req: any, @Body() body: { bvn: string }) {
-    return this.kycService.verifyBVN(req.user.id, body.bvn);
+  @ApiOperation({ summary: 'Verify BVN via VerifyMe Nigeria' })
+  verifyBVN(@Req() req: any, @Body() body: { bvn: string; dob?: string; firstname?: string; lastname?: string }) {
+    return this.kycService.verifyBVN(req.user.id, body.bvn, body.dob, body.firstname, body.lastname);
+  }
+
+  @Post('drivers-licence')
+  @ApiOperation({ summary: 'Verify Driver\'s Licence via VerifyMe Nigeria' })
+  verifyDriversLicence(@Req() req: any, @Body() body: { licenceNumber: string; dob?: string }) {
+    return this.kycService.verifyDriversLicence(req.user.id, body.licenceNumber, body.dob);
   }
 }
