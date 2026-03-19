@@ -15,6 +15,12 @@ type VerificationResult = {
   message?: string
   source?: string
   checked_at?: string
+  frsc?: {
+    owner?: string
+    vehicle?: string
+    state?: string
+    source?: string
+  }
 }
 
 const STATUS_CONFIG = {
@@ -134,6 +140,9 @@ export default function VerifyClient() {
                     ? { label: 'Days Remaining', value: result.days_remaining > 0 ? `${result.days_remaining} days` : 'Expired', highlight: result.days_remaining <= 30 }
                     : null,
                   { label: 'Data Source', value: result.source || 'CoverAI' },
+                  result.frsc?.owner ? { label: 'Registered Owner', value: result.frsc.owner } : null,
+                  result.frsc?.vehicle ? { label: 'Vehicle', value: result.frsc.vehicle } : null,
+                  result.frsc?.state ? { label: 'Reg. State', value: result.frsc.state } : null,
                 ].filter(Boolean).map((item: any) => (
                   <div key={item.label} style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
                     <div style={{ fontSize: 11, color: '#6B7FA3', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{item.label}</div>
@@ -142,7 +151,18 @@ export default function VerifyClient() {
                 ))}
               </div>
             ) : (
-              <p style={{ color: '#6B7FA3', fontSize: 14, lineHeight: 1.6, margin: 0 }}>{result.message}</p>
+              <div>
+                <p style={{ color: '#6B7FA3', fontSize: 14, lineHeight: 1.6, marginBottom: result.frsc ? 12 : 0 }}>{result.message}</p>
+                {result.frsc && (
+                  <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', fontSize: 13 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 6, color: '#8A9BBF', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>🚗 FRSC Vehicle Record</div>
+                    {result.frsc.owner && <div style={{ color: '#fff', marginBottom: 3 }}>Owner: <strong>{result.frsc.owner}</strong></div>}
+                    {result.frsc.vehicle && <div style={{ color: '#6B7FA3' }}>Vehicle: {result.frsc.vehicle}</div>}
+                    {result.frsc.state && <div style={{ color: '#6B7FA3' }}>Registered in: {result.frsc.state}</div>}
+                    <div style={{ fontSize: 11, color: '#4A5568', marginTop: 6 }}>Source: {result.frsc.source}</div>
+                  </div>
+                )}
+              </div>
             )}
 
             {result.message && (result.status === 'valid' || result.status === 'expired') && (

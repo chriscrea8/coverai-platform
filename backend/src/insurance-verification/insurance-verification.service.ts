@@ -5,6 +5,7 @@ import { Policy, PolicyStatus } from '../policies/policy.entity';
 import { InsuranceProduct } from '../insurance-products/insurance-product.entity';
 import { InsuranceProvider } from '../insurance-providers/insurance-provider.entity';
 import { ConfigService } from '@nestjs/config';
+import { KycService } from '../kyc/kyc.service';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NOTE ON NIID INTEGRATION:
@@ -43,6 +44,7 @@ export class InsuranceVerificationService {
     @InjectRepository(InsuranceProduct) private readonly productRepo: Repository<InsuranceProduct>,
     @InjectRepository(InsuranceProvider) private readonly providerRepo: Repository<InsuranceProvider>,
     private readonly configService: ConfigService,
+    private readonly kycService: KycService,
   ) {}
 
   async verify(params: { plate?: string; policy?: string }): Promise<VerificationResult> {
@@ -107,11 +109,23 @@ export class InsuranceVerificationService {
     }
 
     if (!policies.length) {
+      // No insurance found internally — check VerifyMe FRSC for vehicle ownership
+      const frscData = params.plate ? await this.kycService.verifyPlateNumber(params.plate) : null;
+
       return {
         status: 'not_found',
         plate: params.plate?.toUpperCase(),
-        message: 'This vehicle does not appear to have valid insurance in our database. Note: Only policies purchased through CoverAI are searchable. For full NIID verification, visit naicom.gov.ng.',
-        source: 'CoverAI Internal',
+        // If FRSC confirms vehicle exists, give more specific message
+        message: frscData?.found
+          ? `Vehicle registered to ${frscData.owner} (${frscData.vehicle}, ${frscData.state}) does not have valid insurance in our database. Insure this vehicle now on CoverAI or check naicom.gov.ng for policies from other insurers.`
+          : 'This vehicle does not appear to have valid insurance in our database. For full NIID verification, visit naicom.gov.ng.',
+        frsc: frscData?.found ? {
+          owner: frscData.owner,
+          vehicle: frscData.vehicle,
+          state: frscData.state,
+          source: frscData.source,
+        } : undefined,
+        source: 'CoverAI Internal + VerifyMe FRSC',
         checked_at: checkedAt,
       };
     }
@@ -146,6 +160,9 @@ export class InsuranceVerificationService {
     const isExpired = expiryDate && expiryDate < now;
     const status = isExpired ? 'expired' : 'valid';
 
+    // Enrich with FRSC ownership data for confirmed policies
+    const frscEnrich = params.plate ? await this.kycService.verifyPlateNumber(params.plate) : null;
+
     return {
       status,
       plate: params.plate?.toUpperCase(),
@@ -154,7 +171,13 @@ export class InsuranceVerificationService {
       provider: providerName,
       expiry_date: expiryDate ? expiryDate.toISOString().split('T')[0] : 'N/A',
       days_remaining: daysRemaining,
-      source: 'CoverAI Internal',
+      frsc: frscEnrich?.found ? {
+        owner: frscEnrich.owner,
+        vehicle: frscEnrich.vehicle,
+        state: frscEnrich.state,
+        source: frscEnrich.source,
+      } : undefined,
+      source: 'CoverAI Internal + VerifyMe FRSC',
       message: isExpired
         ? `This policy expired on ${expiryDate?.toDateString()}. Please renew immediately.`
         : daysRemaining && daysRemaining <= 30

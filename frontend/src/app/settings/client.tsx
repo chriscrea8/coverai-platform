@@ -581,7 +581,7 @@ function KycTab({ profile, token, showToast, setProfile }: any) {
             ))}
           </div>
           <div style={{ marginTop: 10, fontSize: 11, color: '#4A5568', textAlign: 'center' }}>
-            🔒 Powered by <strong style={{ color: '#F4A623' }}>VerifyMe Nigeria</strong> · Test: NIN/BVN <code>10000000001</code>
+            🔒 Powered by <strong style={{ color: '#F4A623' }}>QoreID</strong> · Test NIN/BVN: <code>12345678901</code> · Plate: <code>MLZ823ZZ</code>
           </div>
         </div>
       )}
