@@ -1,97 +1,162 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-
-const NAV_LINKS = [
-  { label: 'Home', href: '/' },
-  { label: 'AI Assistant', href: '/chat' },
-  { label: 'Learn', href: '/learn' },
-  { label: 'Compare', href: '/compare' },
-  { label: 'Get Coverage', href: '/coverage' },
-  { label: 'Verify Insurance', href: '/verify' },
-]
-
-const AUTH_ONLY_LINKS = [
-  { label: 'Claims', href: '/claims/new' },
-  { label: 'Refer & Earn 🎁', href: '/referrals' },
-]
+import { usePathname, useRouter } from 'next/navigation'
 
 export default function Navbar() {
-  const pathname = usePathname()
-  const [loggedIn, setLoggedIn] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const pathname = usePathname()
+  const router = useRouter()
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    setLoggedIn(!!localStorage.getItem('access_token'))
+    setIsLoggedIn(!!localStorage.getItem('access_token'))
     const onScroll = () => setScrolled(window.scrollY > 20)
-    window.addEventListener('scroll', onScroll)
+    window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const isActive = (href: string) => href === '/' ? pathname === '/' : pathname.startsWith(href)
-  const allLinks = loggedIn ? [...NAV_LINKS, ...AUTH_ONLY_LINKS] : NAV_LINKS
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const NAV_LINKS = [
+    { href: '/compare', label: 'Compare' },
+    { href: '/coverage', label: 'Get Coverage' },
+    { href: '/verify', label: 'Verify' },
+    { href: '/learn', label: 'Learn' },
+  ]
+
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 transition-all"
-      style={{
-        background: scrolled ? 'rgba(10,15,30,0.97)' : 'rgba(10,15,30,0.85)',
-        backdropFilter: 'blur(16px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+    <>
+      <nav style={{
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
+        height: 64,
+        background: scrolled ? 'rgba(8,12,26,0.92)' : 'transparent',
+        backdropFilter: scrolled ? 'blur(20px)' : 'none',
+        borderBottom: scrolled ? '1px solid var(--border)' : '1px solid transparent',
+        transition: 'background 0.3s, border-color 0.3s, backdrop-filter 0.3s',
       }}>
-      <div className="flex items-center justify-between px-4 md:px-10 py-3 md:py-4 max-w-7xl mx-auto">
-        <Link href="/" className="font-syne font-black text-xl">Cover<span className="text-accent">AI</span></Link>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 20px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
 
-        {/* Desktop links */}
-        <div className="hidden md:flex items-center gap-1">
-          {allLinks.map(l => (
-            <Link key={l.href} href={l.href}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive(l.href) ? 'text-white' : 'text-muted hover:text-white hover:bg-white/5'}`}
-              style={isActive(l.href) ? { background: 'rgba(26,58,143,0.4)' } : {}}>
-              {l.label}
+          {/* Logo */}
+          <Link href="/" className="font-syne" style={{ fontWeight: 900, fontSize: 22, textDecoration: 'none', color: '#fff', flexShrink: 0, letterSpacing: '-0.02em' }}>
+            Cover<span style={{ color: 'var(--accent)' }}>AI</span>
+          </Link>
+
+          {/* Desktop nav */}
+          <div className="hidden md:flex" style={{ alignItems: 'center', gap: 4 }}>
+            {NAV_LINKS.map(l => (
+              <Link key={l.href} href={l.href} style={{
+                padding: '7px 14px', borderRadius: 'var(--r-sm)',
+                fontSize: 14, fontWeight: 500, textDecoration: 'none',
+                color: isActive(l.href) ? '#fff' : 'var(--muted)',
+                background: isActive(l.href) ? 'rgba(255,255,255,0.08)' : 'transparent',
+                transition: 'color 0.15s, background 0.15s',
+              }}
+                onMouseEnter={e => { if (!isActive(l.href)) { (e.currentTarget as HTMLElement).style.color = '#fff'; (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)' } }}
+                onMouseLeave={e => { if (!isActive(l.href)) { (e.currentTarget as HTMLElement).style.color = 'var(--muted)'; (e.currentTarget as HTMLElement).style.background = 'transparent' } }}>
+                {l.label}
+              </Link>
+            ))}
+          </div>
+
+          {/* Right actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {/* ARIA chat */}
+            <Link href="/chat" style={{
+              width: 36, height: 36, borderRadius: '50%',
+              background: 'linear-gradient(135deg, #1A3A8F, #00C2A8)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 16, textDecoration: 'none', flexShrink: 0,
+              boxShadow: '0 0 0 2px rgba(0,194,168,0.2)',
+              transition: 'transform 0.15s, box-shadow 0.15s',
+            }}
+              title="Chat with ARIA"
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.05)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 3px rgba(0,194,168,0.35)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 2px rgba(0,194,168,0.2)' }}>
+              🤖
             </Link>
-          ))}
-        </div>
 
-        {/* Right CTA */}
-        <div className="flex items-center gap-2">
-          {loggedIn ? (
-            <Link href="/dashboard" className="px-5 py-2 rounded-lg bg-accent text-ink font-syne font-bold text-sm hover:bg-yellow-400 transition-all hidden md:block">
-              Dashboard
-            </Link>
-          ) : (
-            <>
-              <Link href="/auth" className="px-4 py-2 text-sm text-muted hover:text-white transition-colors hidden md:block">Sign In</Link>
-              <Link href="/auth?mode=register" className="px-5 py-2 rounded-lg bg-accent text-ink font-syne font-bold text-sm hover:bg-yellow-400 transition-all">Get Started</Link>
-            </>
-          )}
-          {/* Mobile hamburger */}
-          <button onClick={() => setMenuOpen(o => !o)} className="md:hidden w-9 h-9 flex flex-col items-center justify-center gap-1.5 rounded-lg ml-1" style={{ background: 'rgba(255,255,255,0.06)' }}>
-            <span className={`w-5 h-0.5 bg-white rounded transition-all ${menuOpen ? 'rotate-45 translate-y-2' : ''}`} />
-            <span className={`w-5 h-0.5 bg-white rounded transition-all ${menuOpen ? 'opacity-0' : ''}`} />
-            <span className={`w-5 h-0.5 bg-white rounded transition-all ${menuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
-          </button>
-        </div>
-      </div>
+            {isLoggedIn ? (
+              <Link href="/dashboard" className="btn-ghost hidden md:flex" style={{ padding: '8px 16px', fontSize: 13 }}>
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link href="/auth" className="btn-ghost hidden md:flex" style={{ padding: '8px 16px', fontSize: 13 }}>
+                  Sign In
+                </Link>
+                <Link href="/auth?mode=register" className="btn-primary hidden md:flex" style={{ padding: '9px 18px', fontSize: 13 }}>
+                  Get Started
+                </Link>
+              </>
+            )}
 
-      {/* Mobile menu */}
+            {/* Mobile hamburger */}
+            <button
+              className="flex md:hidden"
+              onClick={() => setMenuOpen(o => !o)}
+              style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 6, display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {[0,1,2].map(i => (
+                <span key={i} style={{
+                  display: 'block', width: 22, height: 2, background: '#fff', borderRadius: 2,
+                  transition: 'transform 0.2s, opacity 0.2s',
+                  transform: menuOpen && i === 0 ? 'rotate(45deg) translate(5px, 5px)' : menuOpen && i === 2 ? 'rotate(-45deg) translate(5px, -5px)' : 'none',
+                  opacity: menuOpen && i === 1 ? 0 : 1,
+                }} />
+              ))}
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      {/* Mobile drawer */}
       {menuOpen && (
-        <div className="md:hidden border-t border-white/5 px-4 py-3" style={{ background: 'rgba(10,15,30,0.98)' }}>
-          {allLinks.map(l => (
-            <Link key={l.href} href={l.href} onClick={() => setMenuOpen(false)}
-              className={`flex items-center px-4 py-3 rounded-xl text-sm font-medium mb-1 transition-all ${isActive(l.href) ? 'text-white' : 'text-muted'}`}
-              style={isActive(l.href) ? { background: 'rgba(26,58,143,0.35)' } : {}}>
-              {l.label}
-            </Link>
-          ))}
-          {loggedIn ? (
-            <Link href="/dashboard" onClick={() => setMenuOpen(false)} className="flex items-center px-4 py-3 rounded-xl text-sm font-bold text-accent border-t border-white/5 mt-1 pt-3">Dashboard →</Link>
-          ) : (
-            <Link href="/auth" onClick={() => setMenuOpen(false)} className="flex items-center px-4 py-3 rounded-xl text-sm font-medium text-muted border-t border-white/5 mt-1 pt-3">Sign In →</Link>
-          )}
+        <div ref={menuRef} style={{
+          position: 'fixed', top: 64, left: 0, right: 0, zIndex: 99,
+          background: 'rgba(8,12,26,0.98)', borderBottom: '1px solid var(--border)',
+          backdropFilter: 'blur(24px)', padding: '16px 20px 24px',
+          animation: 'fade-in 0.2s ease',
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 16 }}>
+            {NAV_LINKS.map(l => (
+              <Link key={l.href} href={l.href} onClick={() => setMenuOpen(false)}
+                style={{
+                  padding: '12px 14px', borderRadius: 'var(--r-sm)', fontSize: 15, fontWeight: 500,
+                  textDecoration: 'none', color: isActive(l.href) ? 'var(--accent)' : '#fff',
+                  background: isActive(l.href) ? 'var(--accent-dim)' : 'transparent',
+                  transition: 'background 0.15s',
+                }}>
+                {l.label}
+              </Link>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+            {isLoggedIn ? (
+              <Link href="/dashboard" className="btn-primary" style={{ flex: 1, textAlign: 'center', textDecoration: 'none' }} onClick={() => setMenuOpen(false)}>
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link href="/auth" className="btn-ghost" style={{ flex: 1, textAlign: 'center', textDecoration: 'none' }} onClick={() => setMenuOpen(false)}>Sign In</Link>
+                <Link href="/auth?mode=register" className="btn-primary" style={{ flex: 1, textAlign: 'center', textDecoration: 'none' }} onClick={() => setMenuOpen(false)}>Get Started</Link>
+              </>
+            )}
+          </div>
         </div>
       )}
-    </nav>
+
+      {/* Spacer */}
+      <div style={{ height: 64 }} />
+    </>
   )
 }

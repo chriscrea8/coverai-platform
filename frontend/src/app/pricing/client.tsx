@@ -4,8 +4,8 @@ import Footer from '@/components/Footer'
 import Link from 'next/link'
 
 const plans = [
-  { name: 'Starter', price: '₦0', per: 'Free forever', color: '#00C2A8', features: ['AI Insurance Chatbot (50 msgs/day)', '1 Active Policy', 'Basic Claims Submission', 'Email Support', 'Policy Documents'], notIncluded: ['Priority Claims', 'Phone Support', 'Embedded API', 'Analytics'] },
-  { name: 'Business', price: '₦4,999', per: '/month', color: '#F4A623', featured: true, features: ['Unlimited AI Chat', 'Unlimited Policies', 'Priority Claims (48hr SLA)', 'Full SME Dashboard', 'Payment History', 'Phone & Email Support', 'Renewal Reminders'], notIncluded: ['Embedded API', 'Dedicated Manager'] },
+  { name: 'Starter', price: '₦0', per: 'Free forever', color: 'var(--teal)', features: ['AI Insurance Chatbot (50 msgs/day)', '1 Active Policy', 'Basic Claims Submission', 'Email Support', 'Policy Documents'], notIncluded: ['Priority Claims', 'Phone Support', 'Embedded API', 'Analytics'] },
+  { name: 'Business', price: '₦4,999', per: '/month', color: 'var(--accent)', featured: true, features: ['Unlimited AI Chat', 'Unlimited Policies', 'Priority Claims (48hr SLA)', 'Full SME Dashboard', 'Payment History', 'Phone & Email Support', 'Renewal Reminders'], notIncluded: ['Embedded API', 'Dedicated Manager'] },
   { name: 'Enterprise', price: 'Custom', per: 'Contact us', color: '#7C6BFF', features: ['Everything in Business', 'Embedded Insurance API', 'Dedicated Account Manager', '4hr Claims SLA', 'Custom Integrations', 'White-label Option', 'SLA Guarantee', 'NAICOM Compliance Reports'] },
 ]
 
@@ -33,7 +33,7 @@ export default function PricingPage() {
           <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
             {plans.map(p => (
               <div key={p.name} className={`p-8 rounded-2xl relative ${(p as any).featured ? 'ring-2 ring-accent/40' : ''}`}
-                style={{ background: (p as any).featured ? 'rgba(26,58,143,0.3)' : 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                style={{ background: (p as any).featured ? 'rgba(26,58,143,0.3)' : 'var(--glass-1)', border: '1px solid rgba(255,255,255,0.08)' }}>
                 {(p as any).featured && <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-accent text-ink text-xs font-black">Most Popular</div>}
                 <div className="font-syne font-black text-xl mb-1" style={{ color: p.color }}>{p.name}</div>
                 <div className="font-syne font-black text-4xl mt-4 mb-1">{p.price}</div>
@@ -44,7 +44,7 @@ export default function PricingPage() {
                 </ul>
                 <Link href={p.price === 'Custom' ? '/about' : '/auth?mode=register'}
                   className="block text-center py-3 rounded-xl font-syne font-bold text-sm transition-all"
-                  style={(p as any).featured ? { background: '#F4A623', color: '#0A0F1E' } : { background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.12)' }}>
+                  style={(p as any).featured ? { background: 'var(--accent)', color: '#fff' } : { background: 'rgba(255,255,255,0.07)', color: 'white', border: '1px solid rgba(255,255,255,0.12)' }}>
                   {p.price === 'Custom' ? 'Contact Sales' : 'Get Started Free'}
                 </Link>
               </div>
@@ -52,7 +52,7 @@ export default function PricingPage() {
           </div>
         </section>
 
-        <section className="py-16 px-6" style={{ background: '#0D1B3E' }}>
+        <section className="py-16 px-6" style={{ background: 'var(--navy)' }}>
           <div className="max-w-2xl mx-auto">
             <h2 className="font-syne font-black text-3xl mb-10 text-center">Frequently Asked Questions</h2>
             <div className="space-y-4">

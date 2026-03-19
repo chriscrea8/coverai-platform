@@ -118,11 +118,11 @@ export default function NewClaimPage() {
           <h1 className="font-syne font-black text-3xl">Submit a Claim</h1>
         </div>
 
-        <div className="p-5 md:p-8 rounded-2xl space-y-5" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="p-5 md:p-8 rounded-2xl space-y-5" style={{ background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,0.08)' }}>
           {/* Policy selector */}
           <div>
             <label className="text-xs font-semibold text-muted uppercase tracking-wider block mb-1.5">Policy *</label>
-            <select className={inputCls} style={{ ...inputStyle, background: 'rgba(13,27,62,0.9)' }}
+            <select className={inputCls} style={{ ...inputStyle, background: 'var(--glass-2)' }}
               value={form.policyId} onChange={e => set('policyId', e.target.value)}>
               <option value="">Select a policy</option>
               {policies.filter(p => p.policyStatus === 'active').map(p => (
@@ -176,7 +176,7 @@ export default function NewClaimPage() {
               onDragLeave={() => setDragging(false)}
               onDrop={e => { e.preventDefault(); setDragging(false); handleFiles(e.dataTransfer.files) }}
               className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all"
-              style={{ borderColor: dragging ? '#F4A623' : 'rgba(255,255,255,0.15)', background: dragging ? 'rgba(244,166,35,0.05)' : 'transparent' }}>
+              style={{ borderColor: dragging ? 'var(--accent)' : 'rgba(255,255,255,0.15)', background: dragging ? 'rgba(244,166,35,0.05)' : 'transparent' }}>
               <div className="text-3xl mb-2">📎</div>
               <p className="text-sm"><span className="text-accent font-semibold">Click to upload</span> or drag & drop</p>
               <p className="text-muted text-xs mt-1">Photos, police report, receipts (max 10MB each)</p>
@@ -205,7 +205,7 @@ export default function NewClaimPage() {
 
           <button onClick={submit} disabled={loading}
             className="w-full py-3.5 rounded-xl font-syne font-bold text-ink transition-all hover:bg-yellow-400 disabled:opacity-50"
-            style={{ background: '#F4A623' }}>
+            style={{ background: 'var(--accent)' }}>
             {loading ? 'Submitting...' : 'Submit Claim →'}
           </button>
         </div>

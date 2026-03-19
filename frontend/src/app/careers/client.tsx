@@ -31,7 +31,7 @@ export default function CareersPage() {
           <p className="text-muted max-w-xl mx-auto text-lg">Join a small, focused team solving a massive problem across the continent. Every role here has outsized impact.</p>
         </section>
 
-        <section className="py-12 px-6" style={{ background: '#0D1B3E' }}>
+        <section className="py-12 px-6" style={{ background: 'var(--navy)' }}>
           <div className="max-w-4xl mx-auto">
             <h2 className="font-syne font-black text-2xl mb-8 text-center">Why Work at CoverAI?</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -51,12 +51,12 @@ export default function CareersPage() {
             <h2 className="font-syne font-black text-2xl mb-8">Open Roles</h2>
             <div className="space-y-4">
               {roles.map(r => (
-                <div key={r.title} className="p-6 rounded-2xl" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <div key={r.title} className="p-6 rounded-2xl" style={{ background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,0.07)' }}>
                   <div className="flex flex-wrap justify-between gap-3 mb-2">
                     <div>
                       <h3 className="font-syne font-bold text-lg">{r.title}</h3>
                       <div className="flex gap-2 mt-1 flex-wrap">
-                        <span className="px-2 py-0.5 rounded-full text-xs" style={{ background: 'rgba(0,194,168,0.12)', color: '#00C2A8' }}>{r.dept}</span>
+                        <span className="px-2 py-0.5 rounded-full text-xs" style={{ background: 'rgba(0,194,168,0.12)', color: 'var(--teal)' }}>{r.dept}</span>
                         <span className="text-muted text-xs">{r.type}</span>
                         <span className="text-muted text-xs">📍 {r.location}</span>
                       </div>

@@ -66,7 +66,7 @@ export default function ChatPage() {
 
   return (
     <div className="min-h-screen bg-ink flex flex-col"
-      style={{ background: 'radial-gradient(ellipse 70% 40% at 50% 0%, rgba(26,58,143,0.2) 0%, transparent 70%), #0A0F1E' }}>
+      style={{ background: 'var(--ink)' }}>
 
       {/* Header */}
       <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 border-b border-white/5 sticky top-0 z-10"
@@ -87,7 +87,7 @@ export default function ChatPage() {
         </div>
 
         <div className="flex-1 flex flex-col rounded-2xl overflow-hidden"
-          style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          style={{ background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,0.08)' }}>
           {/* ARIA header */}
           <div className="px-4 md:px-5 py-3 md:py-4 flex items-center gap-3 border-b border-white/5"
             style={{ background: 'rgba(26,58,143,0.2)' }}>
@@ -114,7 +114,7 @@ export default function ChatPage() {
                 <div className="text-sm leading-relaxed px-3 md:px-4 py-2.5 md:py-3 rounded-2xl"
                   style={m.role === 'assistant'
                     ? { background: 'rgba(26,58,143,0.35)', border: '1px solid rgba(26,58,143,0.5)', borderBottomLeftRadius: 4 }
-                    : { background: '#F4A623', color: '#0A0F1E', fontWeight: 500, borderBottomRightRadius: 4 }}>
+                    : { background: 'var(--accent)', color: '#fff', fontWeight: 500, borderBottomRightRadius: 4 }}>
                   {renderText(m.text)}
                 </div>
               </div>
@@ -159,7 +159,7 @@ export default function ChatPage() {
             />
             <button onClick={() => send(input)} disabled={typing}
               className="w-10 md:w-11 h-10 md:h-11 rounded-xl flex items-center justify-center text-ink text-base transition-all hover:bg-yellow-400 disabled:opacity-50 shrink-0"
-              style={{ background: '#F4A623' }}>
+              style={{ background: 'var(--accent)' }}>
               ➤
             </button>
           </div>

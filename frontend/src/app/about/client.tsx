@@ -35,7 +35,7 @@ export default function AboutPage() {
         </section>
 
         {/* Mission */}
-        <section className="py-16 px-6" style={{ background: '#0D1B3E' }}>
+        <section className="py-16 px-6" style={{ background: 'var(--navy)' }}>
           <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-10 items-center">
             <div>
               <h2 className="font-syne font-black text-3xl md:text-4xl mb-5">Our Mission</h2>
@@ -68,7 +68,7 @@ export default function AboutPage() {
             <h2 className="font-syne font-black text-3xl mb-10 text-center">What We Stand For</h2>
             <div className="grid md:grid-cols-2 gap-5">
               {values.map(v => (
-                <div key={v.title} className="p-6 rounded-2xl" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <div key={v.title} className="p-6 rounded-2xl" style={{ background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,0.07)' }}>
                   <div className="text-3xl mb-3">{v.icon}</div>
                   <h3 className="font-syne font-bold text-lg mb-2">{v.title}</h3>
                   <p className="text-muted text-sm leading-relaxed">{v.desc}</p>
@@ -79,7 +79,7 @@ export default function AboutPage() {
         </section>
 
         {/* Team */}
-        <section className="py-16 px-6" style={{ background: '#0D1B3E' }}>
+        <section className="py-16 px-6" style={{ background: 'var(--navy)' }}>
           <div className="max-w-4xl mx-auto">
             <h2 className="font-syne font-black text-3xl mb-10 text-center">Meet the Team</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-5">

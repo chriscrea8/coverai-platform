@@ -202,8 +202,8 @@ const GUIDES = [
 
 function DifficultyBadge({ level }: { level: string }) {
   const colors: Record<string, { bg: string; color: string }> = {
-    Beginner: { bg: 'rgba(0,194,168,0.15)', color: '#00C2A8' },
-    Intermediate: { bg: 'rgba(244,166,35,0.15)', color: '#F4A623' },
+    Beginner: { bg: 'rgba(0,194,168,0.15)', color: 'var(--teal)' },
+    Intermediate: { bg: 'rgba(244,166,35,0.15)', color: 'var(--accent)' },
     Advanced: { bg: 'rgba(239,68,68,0.15)', color: '#EF4444' },
   }
   const c = colors[level] || colors.Beginner
@@ -296,12 +296,12 @@ export default function LearnPage() {
 
   if (selectedGuide) {
     return (
-      <div style={{ minHeight: '100vh', background: 'radial-gradient(ellipse 70% 40% at 50% 0%, rgba(26,58,143,0.2) 0%, transparent 70%), #0A0F1E', color: '#fff' }}>
+      <div style={{ minHeight: '100vh', background: 'var(--ink)', color: '#fff' }}>
         <Navbar />
         <div style={{ height: 64 }} />
         <div style={{ padding: '16px 24px' }}>
           <button onClick={() => { setSelectedGuide(null); setExpandedSections([0]) }}
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#6B7FA3', cursor: 'pointer', padding: '8px 16px', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' }}>
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--muted)', cursor: 'pointer', padding: '8px 16px', borderRadius: 10, fontSize: 13, fontFamily: 'inherit' }}>
             ← Back to Guides
           </button>
         </div>
@@ -313,14 +313,14 @@ export default function LearnPage() {
               <span style={{ fontSize: 40 }}>{selectedGuide.icon}</span>
               <div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
-                  <span style={{ fontSize: 12, color: '#6B7FA3', background: 'rgba(255,255,255,0.05)', padding: '3px 10px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.08)' }}>{selectedGuide.category}</span>
+                  <span style={{ fontSize: 12, color: 'var(--muted)', background: 'rgba(255,255,255,0.05)', padding: '3px 10px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.08)' }}>{selectedGuide.category}</span>
                   <DifficultyBadge level={selectedGuide.difficulty} />
-                  <span style={{ fontSize: 12, color: '#6B7FA3' }}>· {selectedGuide.readTime} read</span>
+                  <span style={{ fontSize: 12, color: 'var(--muted)' }}>· {selectedGuide.readTime} read</span>
                 </div>
                 <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: 26, fontWeight: 800, lineHeight: 1.3, margin: 0 }}>{selectedGuide.title}</h1>
               </div>
             </div>
-            <p style={{ color: '#6B7FA3', fontSize: 15, lineHeight: 1.6, margin: 0, padding: '16px 20px', background: 'rgba(26,58,143,0.15)', borderLeft: '3px solid #1A3A8F', borderRadius: '0 12px 12px 0' }}>
+            <p style={{ color: 'var(--muted)', fontSize: 15, lineHeight: 1.6, margin: 0, padding: '16px 20px', background: 'rgba(26,58,143,0.15)', borderLeft: '3px solid #1A3A8F', borderRadius: '0 12px 12px 0' }}>
               {selectedGuide.summary}
             </p>
           </div>
@@ -343,7 +343,7 @@ export default function LearnPage() {
                 >
                   {section.heading}
                   <span style={{
-                    fontSize: 20, color: '#6B7FA3', transition: 'transform 0.2s',
+                    fontSize: 20, color: 'var(--muted)', transition: 'transform 0.2s',
                     transform: expandedSections.includes(idx) ? 'rotate(45deg)' : 'rotate(0deg)',
                     display: 'inline-block',
                   }}>+</span>
@@ -365,10 +365,10 @@ export default function LearnPage() {
           }}>
             <div style={{ fontSize: 28, marginBottom: 10 }}>🛡️</div>
             <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: 18, fontWeight: 800, marginBottom: 8 }}>Ready to get covered?</h3>
-            <p style={{ color: '#6B7FA3', fontSize: 14, marginBottom: 16 }}>Answer 4 quick questions and get matched with the right insurance in 2 minutes.</p>
+            <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 16 }}>Answer 4 quick questions and get matched with the right insurance in 2 minutes.</p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link href="/coverage" style={{
-                padding: '12px 24px', borderRadius: 12, background: '#F4A623', color: '#0A0F1E',
+                padding: '12px 24px', borderRadius: 12, background: 'var(--accent)', color: '#fff',
                 fontWeight: 700, fontSize: 14, textDecoration: 'none', fontFamily: 'Syne, sans-serif',
               }}>Get Coverage →</Link>
               <Link href="/chat" style={{
@@ -384,7 +384,7 @@ export default function LearnPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'radial-gradient(ellipse 70% 40% at 50% 0%, rgba(26,58,143,0.2) 0%, transparent 70%), #0A0F1E', color: '#fff' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--ink)', color: '#fff' }}>
       {/* Badge earned toast */}
       {newBadge && (
         <div style={{
@@ -398,8 +398,8 @@ export default function LearnPage() {
         }}>
           <div style={{ fontSize: 32, marginBottom: 6 }}>{newBadge.icon}</div>
           <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, marginBottom: 4 }}>Badge Earned!</div>
-          <div style={{ color: '#00C2A8', fontWeight: 700 }}>{newBadge.name}</div>
-          <div style={{ fontSize: 12, color: '#6B7FA3', marginTop: 4 }}>+{newBadge.points} points</div>
+          <div style={{ color: 'var(--teal)', fontWeight: 700 }}>{newBadge.name}</div>
+          <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>+{newBadge.points} points</div>
         </div>
       )}
       <Navbar />
@@ -411,12 +411,12 @@ export default function LearnPage() {
           <div style={{
             display: 'inline-block', padding: '4px 14px', borderRadius: 20, fontSize: 12,
             fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 14,
-            background: 'rgba(0,194,168,0.12)', color: '#00C2A8', border: '1px solid rgba(0,194,168,0.25)',
+            background: 'rgba(0,194,168,0.12)', color: 'var(--teal)', border: '1px solid rgba(0,194,168,0.25)',
           }}>Free Education Hub</div>
           <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: 40, fontWeight: 900, marginBottom: 14, lineHeight: 1.15 }}>
             Insurance, Explained Simply
           </h1>
-          <p style={{ color: '#6B7FA3', fontSize: 17, maxWidth: 560, margin: '0 auto 24px', lineHeight: 1.6 }}>
+          <p style={{ color: 'var(--muted)', fontSize: 17, maxWidth: 560, margin: '0 auto 24px', lineHeight: 1.6 }}>
             No jargon. No confusion. Clear guides for Nigerian businesses and individuals — written by experts, understood by everyone.
           </p>
 
@@ -428,8 +428,8 @@ export default function LearnPage() {
               { value: '100%', label: 'Jargon-Free' },
             ].map(s => (
               <div key={s.label} style={{ textAlign: 'center' }}>
-                <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 28, fontWeight: 900, color: '#F4A623' }}>{s.value}</div>
-                <div style={{ fontSize: 12, color: '#6B7FA3' }}>{s.label}</div>
+                <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 28, fontWeight: 900, color: 'var(--accent)' }}>{s.value}</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)' }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -440,7 +440,7 @@ export default function LearnPage() {
               <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 15 }}>
                 🏆 Your Progress
               </div>
-              <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 900, fontSize: 18, color: '#F4A623' }}>
+              <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 900, fontSize: 18, color: 'var(--accent)' }}>
                 {points} pts
               </div>
             </div>
@@ -448,7 +448,7 @@ export default function LearnPage() {
             <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 20, height: 8, marginBottom: 14, overflow: 'hidden' }}>
               <div style={{ width: `${Math.min((readGuides.length / GUIDES.length) * 100, 100)}%`, height: '100%', background: 'linear-gradient(90deg, #1A3A8F, #00C2A8)', borderRadius: 20, transition: 'width 0.5s ease' }} />
             </div>
-            <div style={{ fontSize: 12, color: '#6B7FA3', marginBottom: 14 }}>
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 14 }}>
               {readGuides.length} of {GUIDES.length} guides read
             </div>
             {/* Badges */}
@@ -459,8 +459,8 @@ export default function LearnPage() {
                   <div key={badge.id} title={`${badge.name}: ${badge.desc} (+${badge.points} pts)`} style={{
                     padding: '6px 12px', borderRadius: 20, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12,
                     background: earned ? 'rgba(0,194,168,0.2)' : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${earned ? 'rgba(0,194,168,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                    color: earned ? '#00C2A8' : '#4A5568',
+                    border: `1px solid ${earned ? 'rgba(0,194,168,0.4)' : 'var(--border)'}`,
+                    color: earned ? 'var(--teal)' : '#4A5568',
                     filter: earned ? 'none' : 'grayscale(1)',
                     transition: 'all 0.3s',
                   }}>
@@ -482,8 +482,8 @@ export default function LearnPage() {
               style={{
                 padding: '8px 18px', borderRadius: 20, fontSize: 13, fontWeight: 600,
                 cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit',
-                background: activeCategory === cat ? '#F4A623' : 'rgba(255,255,255,0.05)',
-                color: activeCategory === cat ? '#0A0F1E' : '#6B7FA3',
+                background: activeCategory === cat ? 'var(--accent)' : 'rgba(255,255,255,0.05)',
+                color: activeCategory === cat ? 'var(--ink)' : 'var(--muted)',
                 border: activeCategory === cat ? 'none' : '1px solid rgba(255,255,255,0.1)',
               }}
             >{cat}</button>
@@ -509,19 +509,19 @@ export default function LearnPage() {
               }}
               onMouseLeave={e => {
                 (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'
-                ;(e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)'
+                ;(e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'
                 ;(e.currentTarget as HTMLElement).style.boxShadow = 'none'
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}><span style={{ fontSize: 36 }}>{guide.icon}</span>{readGuides.includes(guide.id) && <span style={{ fontSize: 18 }} title='Read'>✅</span>}</div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 11, color: '#6B7FA3', background: 'rgba(255,255,255,0.05)', padding: '2px 9px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.08)' }}>{guide.category}</span>
+                <span style={{ fontSize: 11, color: 'var(--muted)', background: 'rgba(255,255,255,0.05)', padding: '2px 9px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.08)' }}>{guide.category}</span>
                 <DifficultyBadge level={guide.difficulty} />
-                <span style={{ fontSize: 11, color: '#6B7FA3' }}>{guide.readTime}</span>
+                <span style={{ fontSize: 11, color: 'var(--muted)' }}>{guide.readTime}</span>
               </div>
               <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: 17, fontWeight: 800, margin: 0, lineHeight: 1.3 }}>{guide.title}</h3>
-              <p style={{ color: '#6B7FA3', fontSize: 13, lineHeight: 1.6, margin: 0 }}>{guide.summary}</p>
-              <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: 6, color: '#F4A623', fontSize: 13, fontWeight: 600 }}>
+              <p style={{ color: 'var(--muted)', fontSize: 13, lineHeight: 1.6, margin: 0 }}>{guide.summary}</p>
+              <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent)', fontSize: 13, fontWeight: 600 }}>
                 Read guide <span>→</span>
               </div>
             </button>
@@ -540,12 +540,12 @@ export default function LearnPage() {
             <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: 22, fontWeight: 900, marginBottom: 8 }}>
               Still have questions?
             </h3>
-            <p style={{ color: '#6B7FA3', fontSize: 15, lineHeight: 1.6, marginBottom: 0 }}>
+            <p style={{ color: 'var(--muted)', fontSize: 15, lineHeight: 1.6, marginBottom: 0 }}>
               Ask ARIA — our AI insurance assistant trained on Nigerian market knowledge. Get instant answers in plain English, 24/7.
             </p>
           </div>
           <Link href="/chat" style={{
-            padding: '14px 28px', borderRadius: 14, background: '#F4A623', color: '#0A0F1E',
+            padding: '14px 28px', borderRadius: 14, background: 'var(--accent)', color: '#fff',
             fontWeight: 800, fontSize: 15, textDecoration: 'none', fontFamily: 'Syne, sans-serif',
             whiteSpace: 'nowrap',
           }}>

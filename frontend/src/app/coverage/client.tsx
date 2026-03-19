@@ -258,12 +258,12 @@ export default function CoveragePage() {
 
   // ── Results screen ─────────────────────────────────────────────
   if (done) return (
-    <div className="min-h-screen bg-ink px-4 py-8 md:py-12" style={{ background: '#080D1A' }}>
+    <div className="min-h-screen bg-ink px-4 py-8 md:py-12" style={{ background: 'var(--ink)' }}>
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-8">
           <Link href="/" className="font-syne font-black text-xl inline-block mb-5">Cover<span className="text-accent">AI</span></Link>
           <div className="inline-block px-4 py-1 rounded-full text-xs font-semibold mb-3 block"
-            style={{ background: 'rgba(0,194,168,.12)', color: '#00C2A8', border: '1px solid rgba(0,194,168,.25)' }}>
+            style={{ background: 'rgba(0,194,168,.12)', color: 'var(--teal)', border: '1px solid rgba(0,194,168,.25)' }}>
             ✦ AI-Matched Recommendations
           </div>
           <h1 className="font-syne font-black text-2xl md:text-3xl">Your Best Matches</h1>
@@ -272,19 +272,19 @@ export default function CoveragePage() {
 
         {toast && (
           <div className="mb-5 p-4 rounded-2xl text-sm text-center"
-            style={{ background: 'rgba(0,194,168,.1)', border: '1px solid rgba(0,194,168,.3)', color: '#00C2A8' }}>
+            style={{ background: 'rgba(0,194,168,.1)', border: '1px solid rgba(0,194,168,.3)', color: 'var(--teal)' }}>
             {toast}
           </div>
         )}
 
         {/* ── Payment frequency selector ── */}
-        <div className="mb-6 p-5 rounded-2xl" style={{ background: 'rgba(13,27,62,.8)', border: '1px solid rgba(255,255,255,.08)' }}>
+        <div className="mb-6 p-5 rounded-2xl" style={{ background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,.08)' }}>
           <div className="flex items-center justify-between mb-3">
             <div>
               <p className="font-syne font-bold text-sm">How often do you want to pay?</p>
               <p className="text-muted text-xs mt-0.5">Annual plan is always cheapest. Shorter cycles suit lower cash flow.</p>
             </div>
-            <span className="px-2.5 py-1 rounded-full text-xs font-bold" style={{ background: 'rgba(46,201,126,.12)', color: '#2EC97E', border: '1px solid rgba(46,201,126,.2)' }}>
+            <span className="px-2.5 py-1 rounded-full text-xs font-bold" style={{ background: 'rgba(46,201,126,.12)', color: 'var(--green)', border: '1px solid rgba(46,201,126,.2)' }}>
               Microinsurance ✦
             </span>
           </div>
@@ -301,15 +301,15 @@ export default function CoveragePage() {
                   }}>
                   {isAnnual && (
                     <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap"
-                      style={{ background: '#2EC97E', color: '#0A0F1E' }}>Best Value</span>
+                      style={{ background: 'var(--green)', color: '#fff' }}>Best Value</span>
                   )}
-                  <p className="font-syne font-bold text-sm" style={{ color: isSelected ? '#F4A623' : '#fff' }}>{cfg.label}</p>
+                  <p className="font-syne font-bold text-sm" style={{ color: isSelected ? 'var(--accent)' : '#fff' }}>{cfg.label}</p>
                   <p className="text-[11px] text-muted mt-0.5 leading-snug">{cfg.desc}</p>
                   {isAnnual && (
-                    <p className="text-[11px] font-semibold mt-1" style={{ color: '#2EC97E' }}>Save up to 20%</p>
+                    <p className="text-[11px] font-semibold mt-1" style={{ color: 'var(--green)' }}>Save up to 20%</p>
                   )}
                   {key === 'weekly' && (
-                    <p className="text-[11px] font-semibold mt-1" style={{ color: '#00C2A8' }}>{cfg.graceDays}-day grace period</p>
+                    <p className="text-[11px] font-semibold mt-1" style={{ color: 'var(--teal)' }}>{cfg.graceDays}-day grace period</p>
                   )}
                 </button>
               )
@@ -337,20 +337,20 @@ export default function CoveragePage() {
             {products.map((p: any, i: number) => (
               <div key={p.id || p.name}
                 className="p-5 md:p-6 rounded-2xl transition-all"
-                style={{ background: 'rgba(13,27,62,.8)', border: i === 0 ? '1px solid rgba(244,166,35,.3)' : '1px solid rgba(255,255,255,.08)' }}>
+                style={{ background: 'var(--glass-1)', border: i === 0 ? '1px solid rgba(244,166,35,.3)' : '1px solid rgba(255,255,255,.08)' }}>
 
                 <div className="flex justify-between items-start gap-3 mb-2">
                   <div style={{ flex: 1 }}>
                     <h3 className="font-syne font-bold text-base md:text-lg leading-tight">{p.displayName || p.title || p.name}</h3>
                     {/* Show insurer name for Curacel products */}
                     {p.insurer?.name && (
-                      <div style={{ fontSize: 12, color: '#6B7FA3', marginTop: 2 }}>
+                      <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
                         🏛️ {p.insurer.name}
                       </div>
                     )}
                   </div>
                   <span className="px-2.5 py-1 rounded-full text-xs font-bold shrink-0"
-                    style={{ background: 'rgba(244,166,35,.15)', color: '#F4A623', border: '1px solid rgba(244,166,35,.3)' }}>
+                    style={{ background: 'rgba(244,166,35,.15)', color: 'var(--accent)', border: '1px solid rgba(244,166,35,.3)' }}>
                     {i === 0 ? 'Best Match' : i === 1 ? 'Popular' : 'Recommended'}
                   </span>
                 </div>
@@ -363,8 +363,8 @@ export default function CoveragePage() {
                 {p.cover_benefits && p.cover_benefits.length > 0 && (
                   <div style={{ marginBottom: 12 }}>
                     {p.cover_benefits.slice(0, 2).map((b: any, bi: number) => (
-                      <div key={bi} style={{ fontSize: 12, color: '#6B7FA3', marginBottom: 3, display: 'flex', gap: 6 }}>
-                        <span style={{ color: '#2EC97E' }}>✓</span>
+                      <div key={bi} style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 3, display: 'flex', gap: 6 }}>
+                        <span style={{ color: 'var(--green)' }}>✓</span>
                         <span>{b.benefit?.slice(0, 80) || b.cover}</span>
                       </div>
                     ))}
@@ -374,7 +374,7 @@ export default function CoveragePage() {
                 <div className="flex gap-2 flex-wrap mb-4">
                   {(p.tags || []).slice(0, 4).map((t: string) => (
                     <span key={t} className="px-2 py-0.5 rounded-full text-xs capitalize"
-                      style={{ background: 'rgba(0,194,168,.1)', border: '1px solid rgba(0,194,168,.2)', color: '#00C2A8' }}>{t}</span>
+                      style={{ background: 'rgba(0,194,168,.1)', border: '1px solid rgba(0,194,168,.2)', color: 'var(--teal)' }}>{t}</span>
                   ))}
                 </div>
 
@@ -395,9 +395,9 @@ export default function CoveragePage() {
                             }
                           </div>
                           {!isAnnual && (
-                            <div className="text-xs mt-0.5" style={{ color: '#8492B4' }}>
+                            <div className="text-xs mt-0.5" style={{ color: 'var(--muted-light)' }}>
                               ≈ ₦{annual.toLocaleString()}/year ·{' '}
-                              <span style={{ color: '#F4A623' }}>₦{annualBase.toLocaleString()} if paid annually</span>
+                              <span style={{ color: 'var(--accent)' }}>₦{annualBase.toLocaleString()} if paid annually</span>
                             </div>
                           )}
                           {p.coverageAmount && (
@@ -405,7 +405,7 @@ export default function CoveragePage() {
                               Covers up to <span className="text-white">₦{Number(p.coverageAmount).toLocaleString()}</span>
                             </div>
                           )}
-                          <div className="text-xs mt-1" style={{ color: '#00C2A8' }}>
+                          <div className="text-xs mt-1" style={{ color: 'var(--teal)' }}>
                             ✦ {p.match}% match for your profile
                           </div>
                         </>
@@ -416,7 +416,7 @@ export default function CoveragePage() {
                     onClick={() => purchase(p)}
                     disabled={!!purchasing}
                     className="w-full sm:w-auto px-6 py-3 rounded-xl font-syne font-bold text-sm transition-all disabled:opacity-50 hover:brightness-110"
-                    style={{ background: i === 0 ? '#F4A623' : 'rgba(244,166,35,.15)', color: i === 0 ? '#0A0F1E' : '#F4A623', border: i === 0 ? 'none' : '1px solid rgba(244,166,35,.3)' }}>
+                    style={{ background: i === 0 ? 'var(--accent)' : 'rgba(244,166,35,.15)', color: i === 0 ? 'var(--ink)' : 'var(--accent)', border: i === 0 ? 'none' : '1px solid rgba(244,166,35,.3)' }}>
                     {purchasing === (p.id || p.name) ? (
                       <span className="flex items-center gap-2">
                         <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -439,7 +439,7 @@ export default function CoveragePage() {
           {!isLoggedIn && (
             <Link href="/auth?mode=register"
               className="flex-1 py-3 rounded-xl text-sm font-bold text-center transition-all hover:brightness-110"
-              style={{ background: '#F4A623', color: '#0A0F1E' }}>
+              style={{ background: 'var(--accent)', color: '#fff' }}>
               Create Account →
             </Link>
           )}
@@ -467,7 +467,7 @@ export default function CoveragePage() {
   // ── Wizard screen ─────────────────────────────────────────────
   const s = STEPS[step]
   return (
-    <div className="min-h-screen" style={{ background: '#080D1A' }}>
+    <div className="min-h-screen" style={{ background: 'var(--ink)' }}>
       <div className="flex items-center justify-between px-4 md:px-8 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,.05)' }}>
         <Link href="/" className="font-syne font-black text-lg md:text-xl">Cover<span className="text-accent">AI</span></Link>
         <div className="hidden md:flex gap-4 text-sm text-muted">
@@ -494,11 +494,11 @@ export default function CoveragePage() {
           <div className="flex gap-1.5 mb-8">
             {STEPS.map((_, i) => (
               <div key={i} className="flex-1 h-1.5 rounded-full transition-all duration-300"
-                style={{ background: i < step ? '#F4A623' : i === step ? 'linear-gradient(90deg, #F4A623, #00C2A8)' : 'rgba(255,255,255,.1)' }} />
+                style={{ background: i < step ? 'var(--accent)' : i === step ? 'linear-gradient(90deg, #F4A623, #00C2A8)' : 'rgba(255,255,255,.1)' }} />
             ))}
           </div>
 
-          <div className="p-5 md:p-8 rounded-2xl" style={{ background: 'rgba(13,27,62,.8)', border: '1px solid rgba(255,255,255,.08)' }}>
+          <div className="p-5 md:p-8 rounded-2xl" style={{ background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,.08)' }}>
             <div className="text-accent text-xs font-semibold uppercase tracking-widest mb-1">Question {step + 1}</div>
             <h2 className="font-syne font-bold text-lg md:text-2xl mb-6">{s.q}</h2>
             <div className="grid grid-cols-2 gap-3">

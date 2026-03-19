@@ -65,14 +65,14 @@ export default function BrokerClient() {
         <div style={{ maxWidth: 440, width: '100%' }}>
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <Link href="/" style={{ fontFamily: 'Syne, sans-serif', fontWeight: 900, fontSize: 28, textDecoration: 'none', color: '#fff' }}>
-              Cover<span style={{ color: '#F4A623' }}>AI</span>
+              Cover<span style={{ color: 'var(--accent)' }}>AI</span>
             </Link>
-            <div style={{ marginTop: 8, color: '#6B7FA3', fontSize: 14 }}>Partner & Broker Portal</div>
+            <div style={{ marginTop: 8, color: 'var(--muted)', fontSize: 14 }}>Partner & Broker Portal</div>
           </div>
 
-          <div style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 32 }}>
+          <div style={{ background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: 32 }}>
             <h2 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 20, marginBottom: 6 }}>Welcome, Partner</h2>
-            <p style={{ color: '#6B7FA3', fontSize: 14, marginBottom: 24 }}>Enter your API credentials to access the broker dashboard.</p>
+            <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 24 }}>Enter your API credentials to access the broker dashboard.</p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
@@ -85,15 +85,15 @@ export default function BrokerClient() {
               </div>
               {error && <div style={{ color: '#EF4444', fontSize: 13, padding: '10px 14px', borderRadius: 8, background: 'rgba(239,68,68,0.1)' }}>{error}</div>}
               <button onClick={() => validateKey(apiKey)} disabled={loading || !apiKey}
-                style={{ padding: 14, borderRadius: 12, background: '#F4A623', border: 'none', color: '#0A0F1E', fontWeight: 800, fontSize: 15, cursor: 'pointer', fontFamily: 'Syne, sans-serif', opacity: !apiKey ? 0.5 : 1 }}>
+                style={{ padding: 14, borderRadius: 12, background: 'var(--accent)', border: 'none', color: '#fff', fontWeight: 800, fontSize: 15, cursor: 'pointer', fontFamily: 'Syne, sans-serif', opacity: !apiKey ? 0.5 : 1 }}>
                 {loading ? 'Authenticating...' : 'Access Portal →'}
               </button>
             </div>
 
             <div style={{ marginTop: 24, padding: 16, borderRadius: 12, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
               <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Don't have credentials?</div>
-              <div style={{ fontSize: 12, color: '#6B7FA3', lineHeight: 1.6 }}>
-                Contact CoverAI admin to get your Partner API key and secret. Email: <span style={{ color: '#F4A623' }}>partners@coverai.ng</span>
+              <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.6 }}>
+                Contact CoverAI admin to get your Partner API key and secret. Email: <span style={{ color: 'var(--accent)' }}>partners@coverai.ng</span>
               </div>
             </div>
           </div>
@@ -103,17 +103,17 @@ export default function BrokerClient() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#080D1A', color: '#fff' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--ink)', color: '#fff' }}>
       {/* Header */}
       <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(10,15,30,0.95)', position: 'sticky', top: 0, zIndex: 10 }}>
         <Link href="/" style={{ fontFamily: 'Syne, sans-serif', fontWeight: 900, fontSize: 20, textDecoration: 'none', color: '#fff' }}>
-          Cover<span style={{ color: '#F4A623' }}>AI</span>
-          <span style={{ fontSize: 12, color: '#6B7FA3', fontWeight: 400, marginLeft: 8, fontFamily: 'DM Sans, sans-serif' }}>Partner Portal</span>
+          Cover<span style={{ color: 'var(--accent)' }}>AI</span>
+          <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 400, marginLeft: 8, fontFamily: 'DM Sans, sans-serif' }}>Partner Portal</span>
         </Link>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <button onClick={loadData} style={{ padding: '8px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', fontSize: 13 }}>↻ Refresh</button>
           <button onClick={() => { localStorage.removeItem('broker_api_key'); setAuthed(false); setApiKey('') }}
-            style={{ padding: '8px 16px', borderRadius: 10, background: 'rgba(232,69,69,0.1)', border: '1px solid rgba(232,69,69,0.2)', color: '#E84545', cursor: 'pointer', fontSize: 13 }}>
+            style={{ padding: '8px 16px', borderRadius: 10, background: 'rgba(232,69,69,0.1)', border: '1px solid rgba(232,69,69,0.2)', color: 'var(--red)', cursor: 'pointer', fontSize: 13 }}>
             Sign Out
           </button>
         </div>
@@ -126,13 +126,13 @@ export default function BrokerClient() {
           {[
             { label: 'Total Leads', value: leads.length, icon: '📊', color: '#7B9FE0' },
             { label: 'New Leads', value: leads.filter((l: any) => l.status === 'new').length, icon: '🔵', color: '#7B9FE0' },
-            { label: 'Converted', value: leads.filter((l: any) => l.status === 'converted').length, icon: '✅', color: '#2EC97E' },
-            { label: 'Policies', value: policies.length, icon: '📋', color: '#F4A623' },
+            { label: 'Converted', value: leads.filter((l: any) => l.status === 'converted').length, icon: '✅', color: 'var(--green)' },
+            { label: 'Policies', value: policies.length, icon: '📋', color: 'var(--accent)' },
           ].map(s => (
-            <div key={s.label} style={{ padding: '16px', borderRadius: 14, background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div key={s.label} style={{ padding: '16px', borderRadius: 14, background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,0.08)' }}>
               <div style={{ fontSize: 20, marginBottom: 6 }}>{s.icon}</div>
               <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 900, fontSize: 22, color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: 11, color: '#6B7FA3' }}>{s.label}</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)' }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -143,8 +143,8 @@ export default function BrokerClient() {
             <button key={id} onClick={() => setActiveTab(id)} style={{
               flex: 1, padding: '10px', borderRadius: 9, fontSize: 13, fontWeight: 600,
               cursor: 'pointer', border: 'none', fontFamily: 'inherit',
-              background: activeTab === id ? '#F4A623' : 'transparent',
-              color: activeTab === id ? '#0A0F1E' : '#6B7FA3',
+              background: activeTab === id ? 'var(--accent)' : 'transparent',
+              color: activeTab === id ? 'var(--ink)' : 'var(--muted)',
             }}>{label}</button>
           ))}
         </div>
@@ -153,7 +153,7 @@ export default function BrokerClient() {
         {activeTab === 'leads' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {leads.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 60, color: '#6B7FA3' }}>
+              <div style={{ textAlign: 'center', padding: 60, color: 'var(--muted)' }}>
                 <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
                 <div>No leads assigned to you yet.</div>
               </div>
@@ -161,12 +161,12 @@ export default function BrokerClient() {
               <div key={lead.id} style={{ padding: '16px 20px', borderRadius: 14, background: 'rgba(13,27,62,0.7)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, marginBottom: 4 }}>{lead.name || 'Anonymous'}</div>
-                  <div style={{ fontSize: 13, color: '#6B7FA3' }}>
+                  <div style={{ fontSize: 13, color: 'var(--muted)' }}>
                     {lead.phone && `📞 ${lead.phone}`} {lead.location && `· 📍 ${lead.location}`}
                   </div>
                   <div style={{ fontSize: 12, marginTop: 4 }}>
-                    <span style={{ padding: '2px 8px', borderRadius: 20, background: 'rgba(244,166,35,0.15)', color: '#F4A623', fontWeight: 700, textTransform: 'uppercase' }}>{lead.insuranceType}</span>
-                    <span style={{ color: '#6B7FA3', marginLeft: 8 }}>{new Date(lead.createdAt).toLocaleDateString('en-NG')}</span>
+                    <span style={{ padding: '2px 8px', borderRadius: 20, background: 'rgba(244,166,35,0.15)', color: 'var(--accent)', fontWeight: 700, textTransform: 'uppercase' }}>{lead.insuranceType}</span>
+                    <span style={{ color: 'var(--muted)', marginLeft: 8 }}>{new Date(lead.createdAt).toLocaleDateString('en-NG')}</span>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
@@ -178,7 +178,7 @@ export default function BrokerClient() {
                   )}
                   {lead.status !== 'converted' && (
                     <button onClick={() => updateLeadStatus(lead.id, 'converted')}
-                      style={{ padding: '8px 14px', borderRadius: 10, background: 'rgba(46,201,126,0.15)', color: '#2EC97E', border: '1px solid rgba(46,201,126,0.3)', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+                      style={{ padding: '8px 14px', borderRadius: 10, background: 'rgba(46,201,126,0.15)', color: 'var(--green)', border: '1px solid rgba(46,201,126,0.3)', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
                       Mark Converted
                     </button>
                   )}
@@ -192,15 +192,15 @@ export default function BrokerClient() {
         {activeTab === 'policies' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {policies.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 60, color: '#6B7FA3' }}>No policies found.</div>
+              <div style={{ textAlign: 'center', padding: 60, color: 'var(--muted)' }}>No policies found.</div>
             ) : policies.map((pol: any) => (
               <div key={pol.id} style={{ padding: '16px 20px', borderRadius: 14, background: 'rgba(13,27,62,0.7)', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <div>
                     <div style={{ fontWeight: 700, marginBottom: 4 }}>{pol.policyNumber}</div>
-                    <div style={{ fontSize: 13, color: '#6B7FA3' }}>₦{Number(pol.premiumAmount || 0).toLocaleString()} · {pol.policyStatus}</div>
+                    <div style={{ fontSize: 13, color: 'var(--muted)' }}>₦{Number(pol.premiumAmount || 0).toLocaleString()} · {pol.policyStatus}</div>
                   </div>
-                  <div style={{ fontSize: 12, color: '#6B7FA3' }}>{new Date(pol.createdAt).toLocaleDateString('en-NG')}</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)' }}>{new Date(pol.createdAt).toLocaleDateString('en-NG')}</div>
                 </div>
               </div>
             ))}
@@ -211,7 +211,7 @@ export default function BrokerClient() {
         {activeTab === 'api' && (
           <div style={{ padding: 24, borderRadius: 16, background: 'rgba(13,27,62,0.7)', border: '1px solid rgba(255,255,255,0.08)' }}>
             <h3 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, marginBottom: 16 }}>🔑 API Integration Guide</h3>
-            <p style={{ color: '#6B7FA3', marginBottom: 20, lineHeight: 1.6 }}>
+            <p style={{ color: 'var(--muted)', marginBottom: 20, lineHeight: 1.6 }}>
               Use your API key to integrate CoverAI into your own systems. All endpoints require the <code style={{ background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4 }}>x-api-key</code> header.
             </p>
             {[
@@ -222,13 +222,13 @@ export default function BrokerClient() {
               { method: 'PATCH', path: '/api/v1/leads/:id/status', desc: 'Update lead status (contacted/converted)' },
             ].map(ep => (
               <div key={ep.path} style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 8, display: 'flex', gap: 12, alignItems: 'center' }}>
-                <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, minWidth: 50, textAlign: 'center', background: ep.method === 'GET' ? 'rgba(46,201,126,0.2)' : ep.method === 'POST' ? 'rgba(26,58,143,0.3)' : 'rgba(244,166,35,0.2)', color: ep.method === 'GET' ? '#2EC97E' : ep.method === 'POST' ? '#7B9FE0' : '#F4A623' }}>{ep.method}</span>
+                <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, minWidth: 50, textAlign: 'center', background: ep.method === 'GET' ? 'rgba(46,201,126,0.2)' : ep.method === 'POST' ? 'rgba(26,58,143,0.3)' : 'rgba(244,166,35,0.2)', color: ep.method === 'GET' ? 'var(--green)' : ep.method === 'POST' ? '#7B9FE0' : 'var(--accent)' }}>{ep.method}</span>
                 <code style={{ fontSize: 13, color: '#E8EDF5', flex: 1 }}>{ep.path}</code>
-                <span style={{ fontSize: 12, color: '#6B7FA3' }}>{ep.desc}</span>
+                <span style={{ fontSize: 12, color: 'var(--muted)' }}>{ep.desc}</span>
               </div>
             ))}
             <div style={{ marginTop: 20, padding: 16, borderRadius: 10, background: 'rgba(244,166,35,0.08)', border: '1px solid rgba(244,166,35,0.2)' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4, color: '#F4A623' }}>Your API Key</div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4, color: 'var(--accent)' }}>Your API Key</div>
               <code style={{ fontSize: 12, wordBreak: 'break-all' }}>{apiKey}</code>
             </div>
           </div>

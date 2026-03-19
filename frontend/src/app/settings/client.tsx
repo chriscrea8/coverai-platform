@@ -33,7 +33,7 @@ const TABS: { id: Tab; icon: string; label: string }[] = [
 function Toast({ msg, ok }: { msg: string; ok: boolean }) {
   return (
     <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl text-sm font-semibold shadow-xl whitespace-nowrap flex items-center gap-2"
-      style={{ background: ok ? 'rgba(46,201,126,.2)' : 'rgba(232,69,69,.2)', border: `1px solid ${ok ? 'rgba(46,201,126,.4)' : 'rgba(232,69,69,.4)'}`, color: ok ? '#2EC97E' : '#E84545', backdropFilter: 'blur(8px)' }}>
+      style={{ background: ok ? 'rgba(46,201,126,.2)' : 'rgba(232,69,69,.2)', border: `1px solid ${ok ? 'rgba(46,201,126,.4)' : 'rgba(232,69,69,.4)'}`, color: ok ? 'var(--green)' : 'var(--red)', backdropFilter: 'blur(8px)' }}>
       {ok ? '✓' : '✕'} {msg}
     </div>
   )
@@ -72,7 +72,7 @@ function Section({ title, children }: any) {
   return (
     <div className="mb-6">
       <h3 className="font-syne font-bold text-sm uppercase tracking-wider text-muted mb-4">{title}</h3>
-      <div className="p-5 rounded-2xl space-y-4" style={{ background: 'rgba(13,27,62,.8)', border: '1px solid rgba(255,255,255,.07)' }}>
+      <div className="p-5 rounded-2xl space-y-4" style={{ background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,.07)' }}>
         {children}
       </div>
     </div>
@@ -83,7 +83,7 @@ function SaveBtn({ onClick, loading, label = 'Save Changes' }: any) {
   return (
     <button onClick={onClick} disabled={loading}
       className="px-6 py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-50 flex items-center gap-2"
-      style={{ background: '#F4A623', color: '#0A0F1E' }}>
+      style={{ background: 'var(--accent)', color: '#fff' }}>
       {loading && <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />}
       {label}
     </button>
@@ -120,13 +120,13 @@ export default function SettingsClient() {
   const update = (k: string) => (v: any) => setProfile((p: any) => ({ ...p, [k]: v }))
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: '#080D1A' }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--ink)' }}>
       <div className="text-muted text-sm">Loading your settings…</div>
     </div>
   )
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#080D1A' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--ink)' }}>
 
       {/* Header */}
       <header className="flex items-center justify-between px-4 md:px-6 py-3 sticky top-0 z-40"
@@ -154,7 +154,7 @@ export default function SettingsClient() {
           <div className="sticky top-20">
             {/* Avatar */}
             <div className="flex flex-col items-center p-5 rounded-2xl mb-4"
-              style={{ background: 'rgba(13,27,62,.8)', border: '1px solid rgba(255,255,255,.07)' }}>
+              style={{ background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,.07)' }}>
               <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-black mb-3"
                 style={{ background: 'rgba(26,58,143,.5)', border: '2px solid rgba(26,58,143,.8)' }}>
                 {profile.name?.charAt(0) || '?'}
@@ -163,8 +163,8 @@ export default function SettingsClient() {
               <div className="text-muted text-xs mt-0.5 text-center truncate w-full">{profile.email}</div>
               <div className="mt-2 flex items-center gap-1.5">
                 {profile.emailVerified
-                  ? <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(46,201,126,.15)', color: '#2EC97E' }}>✓ Verified</span>
-                  : <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(244,166,35,.15)', color: '#F4A623' }}>Email unverified</span>
+                  ? <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(46,201,126,.15)', color: 'var(--green)' }}>✓ Verified</span>
+                  : <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(244,166,35,.15)', color: 'var(--accent)' }}>Email unverified</span>
                 }
               </div>
               {profile.kycStatus && (
@@ -172,7 +172,7 @@ export default function SettingsClient() {
                   <span className="text-xs px-2 py-0.5 rounded-full capitalize"
                     style={{
                       background: profile.kycStatus === 'verified' ? 'rgba(46,201,126,.15)' : profile.kycStatus === 'pending' ? 'rgba(124,107,255,.15)' : 'rgba(244,166,35,.15)',
-                      color: profile.kycStatus === 'verified' ? '#2EC97E' : profile.kycStatus === 'pending' ? '#7C6BFF' : '#F4A623'
+                      color: profile.kycStatus === 'verified' ? 'var(--green)' : profile.kycStatus === 'pending' ? '#7C6BFF' : 'var(--accent)'
                     }}>
                     KYC {profile.kycStatus}
                   </span>
@@ -191,7 +191,7 @@ export default function SettingsClient() {
                     <span className="ml-auto w-2 h-2 rounded-full bg-accent" />
                   )}
                   {t.id === 'security' && !profile.emailVerified && (
-                    <span className="ml-auto w-2 h-2 rounded-full" style={{ background: '#F4A623' }} />
+                    <span className="ml-auto w-2 h-2 rounded-full" style={{ background: 'var(--accent)' }} />
                   )}
                 </button>
               ))}
@@ -352,12 +352,12 @@ function SecurityTab({ profile, token, showToast, setProfile }: any) {
             <div className="font-semibold text-sm mb-1">{profile.email}</div>
             {profile.emailVerified ? (
               <div className="flex items-center gap-2">
-                <span className="text-xs px-2 py-1 rounded-full" style={{ background: 'rgba(46,201,126,.15)', color: '#2EC97E' }}>✓ Verified</span>
+                <span className="text-xs px-2 py-1 rounded-full" style={{ background: 'rgba(46,201,126,.15)', color: 'var(--green)' }}>✓ Verified</span>
                 <span className="text-muted text-xs">Your email is verified and secure</span>
               </div>
             ) : (
               <div>
-                <span className="text-xs px-2 py-1 rounded-full mb-3 inline-block" style={{ background: 'rgba(244,166,35,.15)', color: '#F4A623' }}>⚠ Not verified</span>
+                <span className="text-xs px-2 py-1 rounded-full mb-3 inline-block" style={{ background: 'rgba(244,166,35,.15)', color: 'var(--accent)' }}>⚠ Not verified</span>
                 <p className="text-muted text-xs mb-4">Verify your email to purchase policies, file claims, and receive important updates.</p>
 
                 {otpSent ? (
@@ -365,13 +365,13 @@ function SecurityTab({ profile, token, showToast, setProfile }: any) {
                     <p className="text-sm text-white/70">Enter the 6-digit code sent to <strong>{profile.email}</strong></p>
                     <input
                       className="w-full px-4 py-3 rounded-xl text-center text-lg font-mono tracking-widest text-white outline-none"
-                      style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)', letterSpacing: '0.5em' }}
+                      style={{ background: 'var(--border)', border: '1px solid rgba(255,255,255,.15)', letterSpacing: '0.5em' }}
                       maxLength={6} value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
                       placeholder="000000" />
                     <div className="flex gap-3">
                       <button onClick={verifyEmail} disabled={verifying || otp.length !== 6}
                         className="flex-1 py-2.5 rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2"
-                        style={{ background: '#2EC97E', color: '#0A0F1E' }}>
+                        style={{ background: 'var(--green)', color: '#fff' }}>
                         {verifying && <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />}
                         Verify Email
                       </button>
@@ -385,7 +385,7 @@ function SecurityTab({ profile, token, showToast, setProfile }: any) {
                 ) : (
                   <button onClick={sendOtp} disabled={resending}
                     className="px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 disabled:opacity-50"
-                    style={{ background: '#F4A623', color: '#0A0F1E' }}>
+                    style={{ background: 'var(--accent)', color: '#fff' }}>
                     {resending && <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />}
                     Send Verification Code
                   </button>
@@ -427,7 +427,7 @@ function SecurityTab({ profile, token, showToast, setProfile }: any) {
             <div className="text-sm font-semibold mb-0.5">Two-Factor Authentication</div>
             <div className="text-muted text-xs">Coming soon — additional login protection</div>
           </div>
-          <span className="text-xs px-2 py-1 rounded-full" style={{ background: 'rgba(244,166,35,.15)', color: '#F4A623' }}>Coming Soon</span>
+          <span className="text-xs px-2 py-1 rounded-full" style={{ background: 'rgba(244,166,35,.15)', color: 'var(--accent)' }}>Coming Soon</span>
         </div>
         <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: 'rgba(255,255,255,.05)' }}>
           <div>
@@ -444,7 +444,7 @@ function SecurityTab({ profile, token, showToast, setProfile }: any) {
             } catch {}
           }}
             className="px-4 py-2 rounded-lg text-xs font-semibold transition-all"
-            style={{ background: 'rgba(232,69,69,.15)', color: '#E84545', border: '1px solid rgba(232,69,69,.3)' }}>
+            style={{ background: 'rgba(232,69,69,.15)', color: 'var(--red)', border: '1px solid rgba(232,69,69,.3)' }}>
             Sign Out All
           </button>
         </div>
@@ -491,7 +491,7 @@ function InstantVerifyCard({ item, token, showToast, setProfile }: any) {
       <div className="text-muted text-xs mb-3">{item.desc}</div>
       {done ? (
         <div>
-          <div className="text-sm font-bold mb-1" style={{ color: '#2EC97E' }}>Verified ✓</div>
+          <div className="text-sm font-bold mb-1" style={{ color: 'var(--green)' }}>Verified ✓</div>
           {result?.name && <div className="text-xs text-muted">{result.name}</div>}
         </div>
       ) : (
@@ -507,7 +507,7 @@ function InstantVerifyCard({ item, token, showToast, setProfile }: any) {
             style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#aaa', fontSize: 12 }} />
           <button onClick={verify} disabled={loading || !isReady}
             className="w-full py-2 rounded-lg text-xs font-bold"
-            style={{ background: '#F4A623', color: '#0A0F1E', opacity: !isReady ? 0.5 : 1, cursor: !isReady ? 'not-allowed' : 'pointer' }}>
+            style={{ background: 'var(--accent)', color: '#fff', opacity: !isReady ? 0.5 : 1, cursor: !isReady ? 'not-allowed' : 'pointer' }}>
             {loading ? 'Verifying...' : `Verify ${item.type}`}
           </button>
         </>
@@ -581,7 +581,7 @@ function KycTab({ profile, token, showToast, setProfile }: any) {
             ))}
           </div>
           <div style={{ marginTop: 10, fontSize: 11, color: '#4A5568', textAlign: 'center' }}>
-            🔒 Powered by <strong style={{ color: '#F4A623' }}>QoreID</strong> · Test NIN/BVN: <code>12345678901</code> · Plate: <code>MLZ823ZZ</code>
+            🔒 Powered by <strong style={{ color: 'var(--accent)' }}>QoreID</strong> · Test NIN/BVN: <code>12345678901</code> · Plate: <code>MLZ823ZZ</code>
           </div>
         </div>
       )}
@@ -698,7 +698,7 @@ function NotificationsTab({ profile, token, showToast }: any) {
       </div>
       <button onClick={() => toggle(id)}
         className="relative w-11 h-6 rounded-full transition-all shrink-0 ml-4"
-        style={{ background: prefs[id as keyof typeof prefs] ? '#2EC97E' : 'rgba(255,255,255,.1)' }}>
+        style={{ background: prefs[id as keyof typeof prefs] ? 'var(--green)' : 'rgba(255,255,255,.1)' }}>
         <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${prefs[id as keyof typeof prefs] ? 'left-6' : 'left-1'}`} />
       </button>
     </div>
@@ -813,7 +813,7 @@ function PayoutTab({ profile, token, showToast, setProfile }: any) {
         style={{ background: hasBankDetails ? 'rgba(46,201,126,.07)' : 'rgba(244,166,35,.07)', border: `1px solid ${hasBankDetails ? 'rgba(46,201,126,.2)' : 'rgba(244,166,35,.2)'}` }}>
         <span className="text-2xl">{hasBankDetails ? '✅' : '⚠️'}</span>
         <div className="flex-1">
-          <p className="font-semibold text-sm" style={{ color: hasBankDetails ? '#2EC97E' : '#F4A623' }}>
+          <p className="font-semibold text-sm" style={{ color: hasBankDetails ? 'var(--green)' : 'var(--accent)' }}>
             {hasBankDetails ? 'Bank account on file' : 'No bank details saved'}
           </p>
           {hasBankDetails ? (
@@ -829,7 +829,7 @@ function PayoutTab({ profile, token, showToast, setProfile }: any) {
         {hasBankDetails && !editing && (
           <button onClick={() => setEditing(true)}
             className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:brightness-110 shrink-0"
-            style={{ background: 'rgba(255,255,255,.08)', color: '#8492B4' }}>
+            style={{ background: 'var(--border)', color: 'var(--muted-light)' }}>
             Update
           </button>
         )}
@@ -896,7 +896,7 @@ function PayoutTab({ profile, token, showToast, setProfile }: any) {
             )}
             <button onClick={save} disabled={saving}
               className="flex-1 py-3 rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2 transition-all hover:brightness-110"
-              style={{ background: '#F4A623', color: '#0A0F1E' }}>
+              style={{ background: 'var(--accent)', color: '#fff' }}>
               {saving ? '…' : '💾 Save Bank Details'}
             </button>
           </div>
@@ -914,7 +914,7 @@ function PayoutTab({ profile, token, showToast, setProfile }: any) {
           ].map(([n, title, desc]) => (
             <div key={n} className="flex gap-3 items-start">
               <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5"
-                style={{ background: 'rgba(244,166,35,.15)', color: '#F4A623' }}>{n}</span>
+                style={{ background: 'rgba(244,166,35,.15)', color: 'var(--accent)' }}>{n}</span>
               <div>
                 <p className="text-sm font-semibold">{title}</p>
                 <p className="text-xs text-muted">{desc}</p>
@@ -938,9 +938,9 @@ function PrivacyTab({ profile }: any) {
         <div className="space-y-4 text-sm">
           {[
             { icon: '👁️', right: 'Right to Access', desc: 'Request a copy of all personal data we hold about you', action: 'Request Data Export', color: '#7C6BFF' },
-            { icon: '✏️', right: 'Right to Rectification', desc: 'Correct any inaccurate personal data we hold', action: 'Update Profile', color: '#00C2A8' },
-            { icon: '🗑️', right: 'Right to Erasure', desc: 'Request deletion of your account and all associated data', action: 'Request Deletion', color: '#E84545' },
-            { icon: '🚫', right: 'Right to Object', desc: 'Opt out of marketing communications and profiling', action: 'Manage Preferences', color: '#F4A623' },
+            { icon: '✏️', right: 'Right to Rectification', desc: 'Correct any inaccurate personal data we hold', action: 'Update Profile', color: 'var(--teal)' },
+            { icon: '🗑️', right: 'Right to Erasure', desc: 'Request deletion of your account and all associated data', action: 'Request Deletion', color: 'var(--red)' },
+            { icon: '🚫', right: 'Right to Object', desc: 'Opt out of marketing communications and profiling', action: 'Manage Preferences', color: 'var(--accent)' },
           ].map(r => (
             <div key={r.right} className="flex items-start gap-4 py-3 border-b last:border-0" style={{ borderColor: 'rgba(255,255,255,.05)' }}>
               <span className="text-xl mt-0.5">{r.icon}</span>

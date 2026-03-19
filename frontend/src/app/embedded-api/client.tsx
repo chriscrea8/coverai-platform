@@ -18,7 +18,7 @@ export default function EmbeddedApiPage() {
           </div>
         </section>
 
-        <section className="py-16 px-6" style={{ background: '#0D1B3E' }}>
+        <section className="py-16 px-6" style={{ background: 'var(--navy)' }}>
           <div className="max-w-5xl mx-auto">
             <h2 className="font-syne font-black text-3xl mb-10 text-center">What You Can Build</h2>
             <div className="grid md:grid-cols-3 gap-5">
@@ -43,7 +43,7 @@ export default function EmbeddedApiPage() {
         <section className="py-16 px-6">
           <div className="max-w-3xl mx-auto">
             <h2 className="font-syne font-black text-3xl mb-8 text-center">Simple Integration</h2>
-            <div className="p-6 rounded-2xl font-mono text-sm" style={{ background: '#080D1A', border: '1px solid rgba(124,107,255,0.3)' }}>
+            <div className="p-6 rounded-2xl font-mono text-sm" style={{ background: 'var(--ink)', border: '1px solid rgba(124,107,255,0.3)' }}>
               <div className="text-muted mb-2">{'// Get insurance quote'}</div>
               <div><span className="text-purple-400">const</span> <span className="text-blue-300">quote</span> = <span className="text-purple-400">await</span> <span className="text-yellow-300">coverai</span>.<span className="text-green-300">quotes</span>.<span className="text-blue-200">create</span>{'({'}</div>
               <div className="ml-4"><span className="text-orange-300">businessType</span>: <span className="text-green-200">'retail'</span>,</div>
@@ -56,7 +56,7 @@ export default function EmbeddedApiPage() {
             </div>
             <div className="grid md:grid-cols-3 gap-4 mt-8">
               {[['99.9%', 'Uptime SLA'], ['< 200ms', 'API Response Time'], ['5 mins', 'Integration Time']].map(([v, l]) => (
-                <div key={l} className="p-5 rounded-2xl text-center" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <div key={l} className="p-5 rounded-2xl text-center" style={{ background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,0.07)' }}>
                   <div className="font-syne font-black text-2xl text-accent">{v}</div>
                   <div className="text-muted text-xs mt-1">{l}</div>
                 </div>
@@ -65,7 +65,7 @@ export default function EmbeddedApiPage() {
           </div>
         </section>
 
-        <section className="py-16 px-6 text-center" style={{ background: '#0D1B3E' }}>
+        <section className="py-16 px-6 text-center" style={{ background: 'var(--navy)' }}>
           <h2 className="font-syne font-black text-3xl mb-4">Ready to integrate?</h2>
           <p className="text-muted mb-8">Contact our partnerships team to get API credentials and sandbox access.</p>
           <a href="mailto:api@coverai.ng" className="px-8 py-4 rounded-xl bg-accent text-ink font-syne font-bold inline-block hover:bg-yellow-400 transition-all">Get API Access →</a>

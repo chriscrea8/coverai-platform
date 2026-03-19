@@ -5,9 +5,9 @@ import { api } from '@/lib/api'
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   new:       { bg: 'rgba(26,58,143,0.3)',  color: '#7B9FE0' },
-  contacted: { bg: 'rgba(244,166,35,0.2)', color: '#F4A623' },
-  converted: { bg: 'rgba(46,201,126,0.2)', color: '#2EC97E' },
-  lost:      { bg: 'rgba(232,69,69,0.2)',  color: '#E84545' },
+  contacted: { bg: 'rgba(244,166,35,0.2)', color: 'var(--accent)' },
+  converted: { bg: 'rgba(46,201,126,0.2)', color: 'var(--green)' },
+  lost:      { bg: 'rgba(232,69,69,0.2)',  color: 'var(--red)' },
 }
 
 const SOURCE_ICON: Record<string, string> = {
@@ -59,11 +59,11 @@ export default function AdminLeadsClient() {
     : 0
 
   return (
-    <div style={{ minHeight: '100vh', background: '#080D1A', color: '#fff', fontFamily: 'DM Sans, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--ink)', color: '#fff', fontFamily: 'DM Sans, sans-serif' }}>
       {/* Header */}
       <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(10,15,30,0.95)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Link href="/admin" style={{ color: '#6B7FA3', textDecoration: 'none', fontSize: 14 }}>← Admin</Link>
+          <Link href="/admin" style={{ color: 'var(--muted)', textDecoration: 'none', fontSize: 14 }}>← Admin</Link>
           <span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
           <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 18 }}>Leads Dashboard</span>
         </div>
@@ -79,17 +79,17 @@ export default function AdminLeadsClient() {
           {[
             { label: 'Total Leads', value: leads.length, icon: '📊', color: '#7B9FE0' },
             { label: 'New', value: leads.filter(l => l.status === 'new').length, icon: '🔵', color: '#7B9FE0' },
-            { label: 'Contacted', value: leads.filter(l => l.status === 'contacted').length, icon: '🟡', color: '#F4A623' },
-            { label: 'Converted', value: leads.filter(l => l.status === 'converted').length, icon: '🟢', color: '#2EC97E' },
-            { label: 'Conversion Rate', value: `${conversionRate}%`, icon: '📈', color: '#00C2A8' },
-            { label: 'WhatsApp', value: leads.filter(l => l.source === 'whatsapp').length, icon: '📱', color: '#2EC97E' },
+            { label: 'Contacted', value: leads.filter(l => l.status === 'contacted').length, icon: '🟡', color: 'var(--accent)' },
+            { label: 'Converted', value: leads.filter(l => l.status === 'converted').length, icon: '🟢', color: 'var(--green)' },
+            { label: 'Conversion Rate', value: `${conversionRate}%`, icon: '📈', color: 'var(--teal)' },
+            { label: 'WhatsApp', value: leads.filter(l => l.source === 'whatsapp').length, icon: '📱', color: 'var(--green)' },
             { label: 'Web', value: leads.filter(l => l.source === 'web').length, icon: '🌐', color: '#7B9FE0' },
-            { label: 'USSD', value: leads.filter(l => l.source === 'ussd').length, icon: '📞', color: '#F4A623' },
+            { label: 'USSD', value: leads.filter(l => l.source === 'ussd').length, icon: '📞', color: 'var(--accent)' },
           ].map(s => (
-            <div key={s.label} style={{ padding: '16px 20px', borderRadius: 16, background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div key={s.label} style={{ padding: '16px 20px', borderRadius: 16, background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,0.08)' }}>
               <div style={{ fontSize: 22, marginBottom: 8 }}>{s.icon}</div>
               <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 900, fontSize: 24, color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: 12, color: '#6B7FA3', marginTop: 2 }}>{s.label}</div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -101,8 +101,8 @@ export default function AdminLeadsClient() {
               <button key={s} onClick={() => setFilter(s)} style={{
                 padding: '7px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
                 border: 'none', fontFamily: 'inherit',
-                background: filter === s ? '#F4A623' : 'rgba(255,255,255,0.06)',
-                color: filter === s ? '#0A0F1E' : '#6B7FA3',
+                background: filter === s ? 'var(--accent)' : 'rgba(255,255,255,0.06)',
+                color: filter === s ? 'var(--ink)' : 'var(--muted)',
               }}>{s.charAt(0).toUpperCase() + s.slice(1)}</button>
             ))}
           </div>
@@ -112,20 +112,20 @@ export default function AdminLeadsClient() {
                 padding: '7px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
                 border: 'none', fontFamily: 'inherit',
                 background: sourceFilter === s ? '#1A3A8F' : 'rgba(255,255,255,0.04)',
-                color: sourceFilter === s ? '#fff' : '#6B7FA3',
+                color: sourceFilter === s ? '#fff' : 'var(--muted)',
               }}>{SOURCE_ICON[s]} {s.charAt(0).toUpperCase() + s.slice(1)}</button>
             ))}
           </div>
-          <div style={{ marginLeft: 'auto', fontSize: 13, color: '#6B7FA3', alignSelf: 'center' }}>
+          <div style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--muted)', alignSelf: 'center' }}>
             {filtered.length} leads
           </div>
         </div>
 
         {/* Leads Table */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 60, color: '#6B7FA3' }}>Loading leads...</div>
+          <div style={{ textAlign: 'center', padding: 60, color: 'var(--muted)' }}>Loading leads...</div>
         ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 60, color: '#6B7FA3' }}>
+          <div style={{ textAlign: 'center', padding: 60, color: 'var(--muted)' }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>📭</div>
             <div>No leads found for these filters.</div>
           </div>
@@ -140,19 +140,19 @@ export default function AdminLeadsClient() {
                 {/* Contact Info */}
                 <div>
                   <div style={{ fontWeight: 700, marginBottom: 4 }}>{lead.name || 'Anonymous'}</div>
-                  <div style={{ fontSize: 13, color: '#6B7FA3', display: 'flex', gap: 12 }}>
+                  <div style={{ fontSize: 13, color: 'var(--muted)', display: 'flex', gap: 12 }}>
                     {lead.phone && <span>📞 {lead.phone}</span>}
                     {lead.email && <span>✉️ {lead.email}</span>}
                   </div>
-                  {lead.location && <div style={{ fontSize: 12, color: '#6B7FA3', marginTop: 2 }}>📍 {lead.location}</div>}
+                  {lead.location && <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>📍 {lead.location}</div>}
                 </div>
 
                 {/* Insurance Info */}
                 <div>
-                  <div style={{ fontSize: 12, padding: '3px 10px', borderRadius: 20, display: 'inline-block', background: 'rgba(244,166,35,0.15)', color: '#F4A623', fontWeight: 700, textTransform: 'uppercase', marginBottom: 6 }}>
+                  <div style={{ fontSize: 12, padding: '3px 10px', borderRadius: 20, display: 'inline-block', background: 'rgba(244,166,35,0.15)', color: 'var(--accent)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 6 }}>
                     {lead.insuranceType}
                   </div>
-                  <div style={{ fontSize: 12, color: '#6B7FA3' }}>
+                  <div style={{ fontSize: 12, color: 'var(--muted)' }}>
                     {SOURCE_ICON[lead.source || 'web']} {lead.source?.toUpperCase() || 'WEB'}
                     {' · '}
                     {new Date(lead.createdAt).toLocaleDateString('en-NG')}
@@ -165,26 +165,26 @@ export default function AdminLeadsClient() {
                   <div style={{ fontSize: 13, padding: '4px 12px', borderRadius: 20, display: 'inline-block', fontWeight: 700, ...STATUS_COLORS[lead.status] }}>
                     {lead.status?.toUpperCase()}
                   </div>
-                  {lead.routedTo && <div style={{ fontSize: 11, color: '#6B7FA3', marginTop: 4 }}>→ {lead.routedTo}</div>}
+                  {lead.routedTo && <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>→ {lead.routedTo}</div>}
                 </div>
 
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: 6, flexDirection: 'column' }}>
                   {lead.status === 'new' && (
                     <button onClick={() => updateStatus(lead.id, 'contacted')} disabled={updating === lead.id}
-                      style={{ padding: '6px 12px', borderRadius: 8, background: 'rgba(244,166,35,0.15)', border: '1px solid rgba(244,166,35,0.3)', color: '#F4A623', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
+                      style={{ padding: '6px 12px', borderRadius: 8, background: 'rgba(244,166,35,0.15)', border: '1px solid rgba(244,166,35,0.3)', color: 'var(--accent)', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
                       Mark Contacted
                     </button>
                   )}
                   {lead.status === 'contacted' && (
                     <button onClick={() => updateStatus(lead.id, 'converted')} disabled={updating === lead.id}
-                      style={{ padding: '6px 12px', borderRadius: 8, background: 'rgba(46,201,126,0.15)', border: '1px solid rgba(46,201,126,0.3)', color: '#2EC97E', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
+                      style={{ padding: '6px 12px', borderRadius: 8, background: 'rgba(46,201,126,0.15)', border: '1px solid rgba(46,201,126,0.3)', color: 'var(--green)', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
                       Mark Converted ✓
                     </button>
                   )}
                   {lead.status !== 'lost' && lead.status !== 'converted' && (
                     <button onClick={() => updateStatus(lead.id, 'lost')} disabled={updating === lead.id}
-                      style={{ padding: '6px 12px', borderRadius: 8, background: 'rgba(232,69,69,0.1)', border: '1px solid rgba(232,69,69,0.2)', color: '#E84545', cursor: 'pointer', fontSize: 11 }}>
+                      style={{ padding: '6px 12px', borderRadius: 8, background: 'rgba(232,69,69,0.1)', border: '1px solid rgba(232,69,69,0.2)', color: 'var(--red)', cursor: 'pointer', fontSize: 11 }}>
                       Mark Lost
                     </button>
                   )}

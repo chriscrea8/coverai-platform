@@ -40,10 +40,10 @@ export default function BlogPage() {
               {posts.map(p => (
                 <Link key={p.title} href={p.slug}
                   className="p-6 rounded-2xl flex flex-col transition-all hover:-translate-y-1"
-                  style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  style={{ background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,0.07)' }}>
                   <div className="text-3xl mb-4">{p.icon}</div>
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: 'rgba(0,194,168,0.12)', color: '#00C2A8' }}>{p.category}</span>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: 'rgba(0,194,168,0.12)', color: 'var(--teal)' }}>{p.category}</span>
                     <span className="text-muted text-xs">{p.read}</span>
                   </div>
                   <h3 className="font-syne font-bold text-base mb-2 leading-tight flex-1">{p.title}</h3>

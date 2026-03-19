@@ -29,13 +29,13 @@ const NAV_ITEMS = [
 ]
 
 const STATUS_COLOR: Record<string, string> = {
-  active: '#2EC97E', pending: '#F4A623', expired: '#E84545', lapsed: '#E84545', cancelled: '#E84545',
-  submitted: '#F4A623', approved: '#2EC97E', rejected: '#E84545', under_review: '#7C6BFF',
-  successful: '#2EC97E', failed: '#E84545',
+  active: 'var(--green)', pending: 'var(--accent)', expired: 'var(--red)', lapsed: 'var(--red)', cancelled: 'var(--red)',
+  submitted: 'var(--accent)', approved: 'var(--green)', rejected: 'var(--red)', under_review: '#7C6BFF',
+  successful: 'var(--green)', failed: 'var(--red)',
 }
 
 function Badge({ status }: { status: string }) {
-  const c = STATUS_COLOR[status] || '#8492B4'
+  const c = STATUS_COLOR[status] || 'var(--muted-light)'
   return (
     <span className="px-2 py-0.5 rounded-full text-xs font-bold capitalize"
       style={{ background: c + '20', color: c, border: `1px solid ${c}40` }}>
@@ -210,19 +210,19 @@ function DashboardInner() {
   const showVerificationBanner = user && !(user as any).emailVerified && !dismissedVerification
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#080D1A' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--ink)' }}>
 
       {/* ── Idle Session Warning Modal ── */}
       {idleWarning && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,.75)', backdropFilter: 'blur(6px)' }}>
           <div className="w-full max-w-sm rounded-2xl p-8 text-center shadow-2xl"
-            style={{ background: 'rgba(10,18,40,.98)', border: '1px solid rgba(255,255,255,.12)' }}>
+            style={{ background: 'rgba(10,18,40,.98)', border: '1px solid var(--border-mid)' }}>
             {/* Countdown ring */}
             <div className="relative w-24 h-24 mx-auto mb-6">
               <svg className="w-24 h-24 -rotate-90" viewBox="0 0 96 96">
                 <circle cx="48" cy="48" r="42" fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="6" />
                 <circle cx="48" cy="48" r="42" fill="none"
-                  stroke={countdown <= 10 ? '#E84545' : '#F4A623'}
+                  stroke={countdown <= 10 ? 'var(--red)' : 'var(--accent)'}
                   strokeWidth="6"
                   strokeLinecap="round"
                   strokeDasharray={`${2 * Math.PI * 42}`}
@@ -230,7 +230,7 @@ function DashboardInner() {
                   style={{ transition: 'stroke-dashoffset 1s linear, stroke 0.3s' }} />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="font-syne font-black text-2xl" style={{ color: countdown <= 10 ? '#E84545' : '#F4A623' }}>
+                <span className="font-syne font-black text-2xl" style={{ color: countdown <= 10 ? 'var(--red)' : 'var(--accent)' }}>
                   {countdown}
                 </span>
                 <span className="text-xs text-muted">sec</span>
@@ -239,7 +239,7 @@ function DashboardInner() {
 
             <h2 className="font-syne font-black text-xl mb-2">Are you still there?</h2>
             <p className="text-muted text-sm mb-6 leading-relaxed">
-              You've been inactive for a while. For your security, you'll be signed out in <span style={{ color: countdown <= 10 ? '#E84545' : '#F4A623' }} className="font-bold">{countdown} second{countdown !== 1 ? 's' : ''}</span> unless you continue.
+              You've been inactive for a while. For your security, you'll be signed out in <span style={{ color: countdown <= 10 ? 'var(--red)' : 'var(--accent)' }} className="font-bold">{countdown} second{countdown !== 1 ? 's' : ''}</span> unless you continue.
             </p>
 
             <div className="flex gap-3">
@@ -250,7 +250,7 @@ function DashboardInner() {
               </button>
               <button onClick={stayActive}
                 className="flex-1 py-3 rounded-xl text-sm font-bold transition-all hover:brightness-110"
-                style={{ background: '#F4A623', color: '#0A0F1E' }}>
+                style={{ background: 'var(--accent)', color: '#fff' }}>
                 Yes, I'm here →
               </button>
             </div>
@@ -270,7 +270,7 @@ function DashboardInner() {
             🔔
             {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full text-xs font-bold flex items-center justify-center"
-                style={{ background: '#E84545', color: '#fff', fontSize: '10px' }}>{unreadCount > 9 ? '9+' : unreadCount}</span>
+                style={{ background: 'var(--red)', color: '#fff', fontSize: '10px' }}>{unreadCount > 9 ? '9+' : unreadCount}</span>
             )}
           </button>
           <Link href="/settings" className="w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:text-white transition-all"
@@ -324,7 +324,7 @@ function DashboardInner() {
       <div className="flex flex-1">
         {/* ── Desktop sidebar ── */}
         <aside className="hidden md:flex w-60 shrink-0 sticky top-0 h-screen flex-col py-6 px-4"
-          style={{ background: 'rgba(13,27,62,.95)', borderRight: '1px solid rgba(255,255,255,.07)' }}>
+          style={{ background: 'var(--glass-3)', borderRight: '1px solid rgba(255,255,255,.07)' }}>
           <Link href="/" className="font-syne font-black text-xl px-2 mb-8">Cover<span className="text-accent">AI</span></Link>
           <nav className="flex flex-col gap-1 flex-1">
             {NAV_ITEMS.map(m => (
@@ -367,7 +367,7 @@ function DashboardInner() {
               <span>🔔</span>Notifications
               {unreadCount > 0 && (
                 <span className="ml-auto min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center"
-                  style={{ background: '#E84545', color: '#fff' }}>{unreadCount > 9 ? '9+' : unreadCount}</span>
+                  style={{ background: 'var(--red)', color: '#fff' }}>{unreadCount > 9 ? '9+' : unreadCount}</span>
               )}
             </button>
             <Link href="/settings" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-muted hover:text-white hover:bg-white/5 transition-all">
@@ -394,7 +394,7 @@ function DashboardInner() {
                 <div className="flex items-center gap-2">
                   {unreadCount > 0 && (
                     <button onClick={markAllRead} className="text-xs px-3 py-1.5 rounded-lg font-semibold transition-all hover:brightness-110"
-                      style={{ background: 'rgba(244,166,35,.15)', color: '#F4A623', border: '1px solid rgba(244,166,35,.3)' }}>
+                      style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid rgba(244,166,35,.3)' }}>
                       Mark all read
                     </button>
                   )}
@@ -420,7 +420,7 @@ function DashboardInner() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2 mb-0.5">
                           <p className={`text-sm font-semibold truncate ${n.readAt ? 'text-muted' : 'text-white'}`}>{n.title}</p>
-                          {!n.readAt && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: '#F4A623' }} />}
+                          {!n.readAt && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: 'var(--accent)' }} />}
                         </div>
                         <p className="text-xs text-muted line-clamp-2 leading-relaxed">{n.message}</p>
                         <p className="text-xs mt-1.5" style={{ color: 'rgba(255,255,255,.3)' }}>{n.createdAt ? timeAgo(n.createdAt) : ''}</p>
@@ -448,12 +448,12 @@ function DashboardInner() {
               <div className="flex items-center gap-2 shrink-0">
                 <Link href="/settings?tab=security"
                   className="px-3 py-1.5 rounded-lg text-xs font-bold hover:brightness-110 transition-all"
-                  style={{ background: '#F4A623', color: '#0A0F1E' }}>
+                  style={{ background: 'var(--accent)', color: '#fff' }}>
                   Verify Now
                 </Link>
                 <button onClick={() => setDismissedVerification(true)}
                   className="w-6 h-6 flex items-center justify-center rounded text-muted hover:text-white transition-all"
-                  style={{ background: 'rgba(255,255,255,.08)' }}>✕</button>
+                  style={{ background: 'var(--border)' }}>✕</button>
               </div>
             </div>
           )}
@@ -464,16 +464,16 @@ function DashboardInner() {
               style={{ background: 'rgba(46,201,126,.08)', border: '1px solid rgba(46,201,126,.3)' }}>
               <span className="text-2xl shrink-0">🎉</span>
               <div className="flex-1 min-w-0">
-                <div className="font-syne font-bold text-sm mb-0.5" style={{ color: '#2EC97E' }}>Your new policy is live!</div>
+                <div className="font-syne font-bold text-sm mb-0.5" style={{ color: 'var(--green)' }}>Your new policy is live!</div>
                 <p className="text-muted text-xs">
                   <strong className="text-white">{policies[0]?.policyNumber}</strong> is now{' '}
-                  <span style={{ color: '#2EC97E' }}>active</span> and protecting your business.
+                  <span style={{ color: 'var(--green)' }}>active</span> and protecting your business.
                   Policy documents will be sent to your email within 24 hours.
                 </p>
               </div>
               <button onClick={() => setHighlightPolicy(false)}
                 className="w-6 h-6 flex items-center justify-center rounded text-muted hover:text-white transition-all shrink-0"
-                style={{ background: 'rgba(255,255,255,.08)' }}>✕</button>
+                style={{ background: 'var(--border)' }}>✕</button>
             </div>
           )}
 
@@ -489,7 +489,7 @@ function DashboardInner() {
                 {kpis.map(k => (
                   <button key={k.label} onClick={() => setActive(k.tab)}
                     className="p-4 md:p-5 rounded-2xl text-left transition-all hover:-translate-y-0.5 hover:brightness-110"
-                    style={{ background: 'rgba(13,27,62,.8)', border: '1px solid rgba(255,255,255,.07)' }}>
+                    style={{ background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,.07)' }}>
                     <div className="text-xl mb-2">{k.icon}</div>
                     <div className="font-syne font-black text-xl">{loading ? '—' : k.value}</div>
                     <div className="text-muted text-xs mt-1 uppercase tracking-wider font-semibold leading-tight">{k.label}</div>
@@ -498,7 +498,7 @@ function DashboardInner() {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-                <div className="p-5 rounded-2xl" style={{ background: 'rgba(13,27,62,.8)', border: '1px solid rgba(255,255,255,.07)' }}>
+                <div className="p-5 rounded-2xl" style={{ background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,.07)' }}>
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="font-syne font-bold">📋 Recent Policies</h3>
                     <button onClick={() => setActive('policies')} className="text-xs text-accent hover:underline">View all</button>
@@ -519,10 +519,10 @@ function DashboardInner() {
                             : `₦${Number(p.premiumAmount).toLocaleString()}/yr`}
                         </div>
                         {p.policyStatus === 'lapsed' && (
-                          <div className="text-xs font-semibold mt-0.5" style={{ color: '#E84545' }}>⚠ Lapsed — tap to reactivate</div>
+                          <div className="text-xs font-semibold mt-0.5" style={{ color: 'var(--red)' }}>⚠ Lapsed — tap to reactivate</div>
                         )}
                         {p.policyStatus === 'active' && p.nextPaymentDate && (
-                          <div className="text-xs mt-0.5" style={{ color: '#F4A623' }}>
+                          <div className="text-xs mt-0.5" style={{ color: 'var(--accent)' }}>
                             Next: {new Date(p.nextPaymentDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
                           </div>
                         )}
@@ -532,7 +532,7 @@ function DashboardInner() {
                   ))}
                 </div>
 
-                <div className="p-5 rounded-2xl" style={{ background: 'rgba(13,27,62,.8)', border: '1px solid rgba(255,255,255,.07)' }}>
+                <div className="p-5 rounded-2xl" style={{ background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,.07)' }}>
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="font-syne font-bold">🛡️ Recent Claims</h3>
                     <button onClick={() => setActive('claims')} className="text-xs text-accent hover:underline">View all</button>
@@ -595,12 +595,12 @@ function DashboardInner() {
                     return (
                       <div key={p.id} className="p-5 rounded-2xl transition-all"
                         style={{
-                          background: 'rgba(13,27,62,.8)',
+                          background: 'var(--glass-1)',
                           border: isLapsed ? '1px solid rgba(232,69,69,.3)' : isNew ? '1px solid rgba(46,201,126,.4)' : '1px solid rgba(255,255,255,.07)',
                           boxShadow: isNew ? '0 0 20px rgba(46,201,126,.1)' : 'none'
                         }}>
                         {isNew && (
-                          <div className="text-xs font-bold mb-3 flex items-center gap-1.5" style={{ color: '#2EC97E' }}>
+                          <div className="text-xs font-bold mb-3 flex items-center gap-1.5" style={{ color: 'var(--green)' }}>
                             ✦ New — Just Purchased
                           </div>
                         )}
@@ -611,7 +611,7 @@ function DashboardInner() {
                               {p.policyDetails?.planName || 'Insurance Policy'}
                               {isInstallment && (
                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold"
-                                  style={{ background: 'rgba(0,194,168,.12)', color: '#00C2A8', border: '1px solid rgba(0,194,168,.2)' }}>
+                                  style={{ background: 'var(--teal-dim)', color: 'var(--teal)', border: '1px solid rgba(0,194,168,.2)' }}>
                                   Microinsurance
                                 </span>
                               )}
@@ -644,10 +644,10 @@ function DashboardInner() {
                               <span className="text-muted">Installment progress</span>
                               <span className="font-semibold">{p.paymentsMade} / {p.paymentsTotal} payments</span>
                             </div>
-                            <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,.08)' }}>
+                            <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
                               <div className="h-full rounded-full transition-all" style={{
                                 width: `${Math.min((Number(p.paymentsMade) / Number(p.paymentsTotal)) * 100, 100)}%`,
-                                background: isLapsed ? '#E84545' : '#2EC97E',
+                                background: isLapsed ? 'var(--red)' : 'var(--green)',
                               }} />
                             </div>
                           </div>
@@ -663,10 +663,10 @@ function DashboardInner() {
                             <span className="text-sm">{isDueSoon ? '⏰' : '📅'}</span>
                             <div className="text-xs">
                               <span className="text-muted">Next payment: </span>
-                              <strong style={{ color: isDueSoon ? '#F4A623' : '#fff' }}>
+                              <strong style={{ color: isDueSoon ? 'var(--accent)' : '#fff' }}>
                                 {nextDue.toLocaleDateString('en-NG', { day: 'numeric', month: 'long' })}
                               </strong>
-                              {daysUntilNext === 0 && <span style={{ color: '#E84545' }}> — Due today!</span>}
+                              {daysUntilNext === 0 && <span style={{ color: 'var(--red)' }}> — Due today!</span>}
                               {daysUntilNext > 0 && <span className="text-muted"> ({daysUntilNext} days)</span>}
                             </div>
                           </div>
@@ -687,7 +687,7 @@ function DashboardInner() {
                         {/* Lapsed banner */}
                         {isLapsed && (
                           <div className="p-4 rounded-xl mb-4" style={{ background: 'rgba(232,69,69,.08)', border: '1px solid rgba(232,69,69,.25)' }}>
-                            <p className="text-sm font-semibold mb-1" style={{ color: '#E84545' }}>⚠️ Coverage Paused — Policy Lapsed</p>
+                            <p className="text-sm font-semibold mb-1" style={{ color: 'var(--red)' }}>⚠️ Coverage Paused — Policy Lapsed</p>
                             <p className="text-xs text-muted">Your policy lapsed due to a missed payment. You are not currently covered. Make a payment of <strong className="text-white">₦{Number(p.installmentAmount || p.premiumAmount).toLocaleString()}</strong> to reactivate immediately.</p>
                           </div>
                         )}
@@ -696,7 +696,7 @@ function DashboardInner() {
                           <div className="flex gap-2 flex-wrap mb-4">
                             {Object.values(p.policyDetails.answers).map((a: any, i: number) => (
                               <span key={i} className="px-2 py-0.5 rounded-full text-xs"
-                                style={{ background: 'rgba(0,194,168,.1)', color: '#00C2A8', border: '1px solid rgba(0,194,168,.2)' }}>
+                                style={{ background: 'rgba(0,194,168,.1)', color: 'var(--teal)', border: '1px solid rgba(0,194,168,.2)' }}>
                                 {a}
                               </span>
                             ))}
@@ -732,7 +732,7 @@ function DashboardInner() {
                                 }
                               }}
                               className="px-4 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
-                              style={{ background: '#F4A623', color: '#0A0F1E' }}>
+                              style={{ background: 'var(--accent)', color: '#fff' }}>
                               💳 Complete Payment
                             </button>
                           )}
@@ -757,7 +757,7 @@ function DashboardInner() {
                                 } catch { alert('Could not initiate reactivation. Please try again.') }
                               }}
                               className="px-4 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
-                              style={{ background: '#E84545', color: '#fff' }}>
+                              style={{ background: 'var(--red)', color: '#fff' }}>
                               🔄 Reactivate Coverage
                             </button>
                           )}
@@ -777,20 +777,20 @@ function DashboardInner() {
                                 } catch { alert('Could not initiate payment. Please try again.') }
                               }}
                               className="px-4 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
-                              style={{ background: '#F4A623', color: '#0A0F1E' }}>
+                              style={{ background: 'var(--accent)', color: '#fff' }}>
                               💳 Pay Now
                             </button>
                           )}
                           {p.documentUrl && (
                             <a href={p.documentUrl} target="_blank" rel="noopener noreferrer"
                               className="px-4 py-2 rounded-xl text-xs font-semibold transition-all"
-                              style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.12)', color: '#fff' }}>
+                              style={{ background: 'rgba(255,255,255,.06)', border: '1px solid var(--border-mid)', color: '#fff' }}>
                               📄 Policy Doc
                             </a>
                           )}
                           <Link href="/claims/new"
                             className="px-4 py-2 rounded-xl text-xs font-semibold transition-all"
-                            style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.12)', color: '#fff' }}>
+                            style={{ background: 'rgba(255,255,255,.06)', border: '1px solid var(--border-mid)', color: '#fff' }}>
                             File Claim
                           </Link>
                         </div>
@@ -815,14 +815,14 @@ function DashboardInner() {
                   <div className="text-5xl mb-4">🛡️</div>
                   <p className="text-muted mb-6">No claims submitted yet.</p>
                   <Link href="/claims/new" className="px-6 py-3 rounded-xl font-bold inline-block"
-                    style={{ background: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.15)' }}>
+                    style={{ background: 'var(--border)', border: '1px solid rgba(255,255,255,.15)' }}>
                     Submit a Claim
                   </Link>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {claims.map(c => (
-                    <div key={c.id} className="p-5 rounded-2xl" style={{ background: 'rgba(13,27,62,.8)', border: '1px solid rgba(255,255,255,.07)' }}>
+                    <div key={c.id} className="p-5 rounded-2xl" style={{ background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,.07)' }}>
                       <div className="flex justify-between gap-3 mb-3">
                         <div className="min-w-0">
                           <div className="font-syne font-bold truncate">{c.claimNumber}</div>
@@ -857,7 +857,7 @@ function DashboardInner() {
                     const isPending = p.paymentStatus === 'pending'
                     return (
                       <div key={p.id} className="p-4 rounded-2xl"
-                        style={{ background: 'rgba(13,27,62,.8)', border: `1px solid ${isPending ? 'rgba(244,166,35,.25)' : 'rgba(255,255,255,.07)'}` }}>
+                        style={{ background: 'var(--glass-1)', border: `1px solid ${isPending ? 'rgba(244,166,35,.25)' : 'rgba(255,255,255,.07)'}` }}>
                         <div className="flex items-center justify-between gap-3">
                           <div className="min-w-0">
                             <div className="font-semibold text-sm font-mono truncate">{p.paymentReference}</div>
@@ -884,7 +884,7 @@ function DashboardInner() {
                                 }
                               }}
                               className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:brightness-110"
-                              style={{ background: 'rgba(232,69,69,.15)', color: '#E84545', border: '1px solid rgba(232,69,69,.3)' }}>
+                              style={{ background: 'rgba(232,69,69,.15)', color: 'var(--red)', border: '1px solid rgba(232,69,69,.3)' }}>
                               🗑 Delete
                             </button>
                             <button
@@ -905,7 +905,7 @@ function DashboardInner() {
                                 }
                               }}
                               className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:brightness-110"
-                              style={{ background: 'rgba(244,166,35,.15)', color: '#F4A623', border: '1px solid rgba(244,166,35,.3)' }}>
+                              style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid rgba(244,166,35,.3)' }}>
                               ↺ Retry
                             </button>
                           </div>
@@ -936,13 +936,13 @@ function DashboardInner() {
                 <div className="space-y-4">
                   {recommendations.map((r: any, i: number) => (
                     <div key={r.product?.id || i} className="p-5 rounded-2xl"
-                      style={{ background: 'rgba(13,27,62,.8)', border: '1px solid rgba(255,255,255,.07)' }}>
+                      style={{ background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,.07)' }}>
                       <div className="flex flex-wrap justify-between gap-3 mb-3">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
                             <span className="font-syne font-bold">{r.product?.name || r.product?.productName}</span>
                             <span className="px-2 py-0.5 rounded-full text-xs capitalize"
-                              style={{ background: 'rgba(0,194,168,.1)', color: '#00C2A8', border: '1px solid rgba(0,194,168,.2)' }}>
+                              style={{ background: 'rgba(0,194,168,.1)', color: 'var(--teal)', border: '1px solid rgba(0,194,168,.2)' }}>
                               {r.product?.productType || r.product?.category}
                             </span>
                             {r.matchType === 'collaborative' && (
@@ -960,7 +960,7 @@ function DashboardInner() {
                       <div className="flex items-center gap-2 p-2.5 rounded-xl mb-3"
                         style={{ background: 'rgba(244,166,35,.08)', border: '1px solid rgba(244,166,35,.2)' }}>
                         <span className="text-sm">✨</span>
-                        <span className="text-xs" style={{ color: '#F4A623' }}>{r.reason}</span>
+                        <span className="text-xs" style={{ color: 'var(--accent)' }}>{r.reason}</span>
                       </div>
 
                       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -975,7 +975,7 @@ function DashboardInner() {
                         </div>
                         <Link href={`/coverage?product=${r.product?.id}`}
                           className="px-4 py-2 rounded-xl text-sm font-bold transition-all hover:brightness-110"
-                          style={{ background: '#F4A623', color: '#0A0F1E' }}>
+                          style={{ background: 'var(--accent)', color: '#fff' }}>
                           Get Quote →
                         </Link>
                       </div>
@@ -1018,7 +1018,7 @@ function DashboardInner() {
 export default function DashboardPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#080D1A' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--ink)' }}>
         <div className="text-muted text-sm">Loading…</div>
       </div>
     }>

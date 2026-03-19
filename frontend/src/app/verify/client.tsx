@@ -24,10 +24,10 @@ type VerificationResult = {
 }
 
 const STATUS_CONFIG = {
-  valid:     { icon: '✅', label: 'Valid Insurance', color: '#2EC97E', bg: 'rgba(46,201,126,0.12)', border: 'rgba(46,201,126,0.3)' },
+  valid:     { icon: '✅', label: 'Valid Insurance', color: 'var(--green)', bg: 'rgba(46,201,126,0.12)', border: 'rgba(46,201,126,0.3)' },
   expired:   { icon: '⚠️', label: 'Insurance Expired', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)' },
   not_found: { icon: '❌', label: 'Not Found', color: '#EF4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.3)' },
-  error:     { icon: '⚡', label: 'Service Error', color: '#6B7FA3', bg: 'rgba(107,127,163,0.12)', border: 'rgba(107,127,163,0.3)' },
+  error:     { icon: '⚡', label: 'Service Error', color: 'var(--muted)', bg: 'rgba(107,127,163,0.12)', border: 'rgba(107,127,163,0.3)' },
 }
 
 export default function VerifyClient() {
@@ -62,19 +62,19 @@ export default function VerifyClient() {
 
         {/* Hero */}
         <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <div style={{ display: 'inline-block', padding: '4px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 14, background: 'rgba(0,194,168,0.12)', color: '#00C2A8', border: '1px solid rgba(0,194,168,0.25)' }}>
+          <div style={{ display: 'inline-block', padding: '4px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 14, background: 'rgba(0,194,168,0.12)', color: 'var(--teal)', border: '1px solid rgba(0,194,168,0.25)' }}>
             Free Verification Tool
           </div>
           <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: 40, fontWeight: 900, marginBottom: 14, lineHeight: 1.2 }}>
-            Vehicle Insurance<br /><span style={{ color: '#F4A623' }}>Verification</span>
+            Vehicle Insurance<br /><span style={{ color: 'var(--accent)' }}>Verification</span>
           </h1>
-          <p style={{ color: '#6B7FA3', fontSize: 16, maxWidth: 480, margin: '0 auto', lineHeight: 1.6 }}>
+          <p style={{ color: 'var(--muted)', fontSize: 16, maxWidth: 480, margin: '0 auto', lineHeight: 1.6 }}>
             Check if a vehicle has valid insurance coverage in Nigeria. Instant results by plate number or policy number.
           </p>
         </div>
 
         {/* Search Card */}
-        <div style={{ padding: 32, borderRadius: 20, background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.1)', marginBottom: 24 }}>
+        <div style={{ padding: 32, borderRadius: 20, background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,0.1)', marginBottom: 24 }}>
 
           {/* Mode Toggle */}
           <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 4 }}>
@@ -82,8 +82,8 @@ export default function VerifyClient() {
               <button key={m} onClick={() => { setMode(m); setResult(null) }} style={{
                 flex: 1, padding: '10px', borderRadius: 9, fontSize: 13, fontWeight: 600,
                 cursor: 'pointer', border: 'none', fontFamily: 'inherit',
-                background: mode === m ? '#F4A623' : 'transparent',
-                color: mode === m ? '#0A0F1E' : '#6B7FA3',
+                background: mode === m ? 'var(--accent)' : 'transparent',
+                color: mode === m ? 'var(--ink)' : 'var(--muted)',
               }}>
                 {m === 'plate' ? '🚗 Plate Number' : '📋 Policy Number'}
               </button>
@@ -105,8 +105,8 @@ export default function VerifyClient() {
             />
             <button onClick={verify} disabled={loading || !(mode === 'plate' ? plate : policyNum).trim()}
               style={{
-                padding: '14px 28px', borderRadius: 12, background: '#F4A623', border: 'none',
-                color: '#0A0F1E', fontWeight: 800, fontSize: 15, cursor: 'pointer',
+                padding: '14px 28px', borderRadius: 12, background: 'var(--accent)', border: 'none',
+                color: '#fff', fontWeight: 800, fontSize: 15, cursor: 'pointer',
                 fontFamily: 'Syne, sans-serif', opacity: loading ? 0.7 : 1, whiteSpace: 'nowrap',
               }}>
               {loading ? '🔍 Checking...' : 'Verify →'}
@@ -114,7 +114,7 @@ export default function VerifyClient() {
           </div>
 
           <div style={{ marginTop: 12, fontSize: 12, color: '#4A5568', textAlign: 'center' }}>
-            Data sourced from CoverAI policy database. For full NIID verification visit <span style={{ color: '#F4A623' }}>naicom.gov.ng</span>
+            Data sourced from CoverAI policy database. For full NIID verification visit <span style={{ color: 'var(--accent)' }}>naicom.gov.ng</span>
           </div>
         </div>
 
@@ -125,7 +125,7 @@ export default function VerifyClient() {
               <span style={{ fontSize: 40 }}>{cfg.icon}</span>
               <div>
                 <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 900, fontSize: 22, color: cfg.color }}>{cfg.label}</div>
-                {result.plate && <div style={{ fontSize: 13, color: '#6B7FA3', marginTop: 2 }}>Plate: <strong style={{ color: '#fff', letterSpacing: 1 }}>{result.plate}</strong></div>}
+                {result.plate && <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 2 }}>Plate: <strong style={{ color: '#fff', letterSpacing: 1 }}>{result.plate}</strong></div>}
               </div>
             </div>
 
@@ -145,20 +145,20 @@ export default function VerifyClient() {
                   result.frsc?.state ? { label: 'Reg. State', value: result.frsc.state } : null,
                 ].filter(Boolean).map((item: any) => (
                   <div key={item.label} style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                    <div style={{ fontSize: 11, color: '#6B7FA3', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{item.label}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{item.label}</div>
                     <div style={{ fontWeight: 700, color: item.highlight ? cfg.color : '#fff', fontSize: 14 }}>{item.value || 'N/A'}</div>
                   </div>
                 ))}
               </div>
             ) : (
               <div>
-                <p style={{ color: '#6B7FA3', fontSize: 14, lineHeight: 1.6, marginBottom: result.frsc ? 12 : 0 }}>{result.message}</p>
+                <p style={{ color: 'var(--muted)', fontSize: 14, lineHeight: 1.6, marginBottom: result.frsc ? 12 : 0 }}>{result.message}</p>
                 {result.frsc && (
                   <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', fontSize: 13 }}>
                     <div style={{ fontWeight: 700, marginBottom: 6, color: '#8A9BBF', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.5px' }}>🚗 FRSC Vehicle Record</div>
                     {result.frsc.owner && <div style={{ color: '#fff', marginBottom: 3 }}>Owner: <strong>{result.frsc.owner}</strong></div>}
-                    {result.frsc.vehicle && <div style={{ color: '#6B7FA3' }}>Vehicle: {result.frsc.vehicle}</div>}
-                    {result.frsc.state && <div style={{ color: '#6B7FA3' }}>Registered in: {result.frsc.state}</div>}
+                    {result.frsc.vehicle && <div style={{ color: 'var(--muted)' }}>Vehicle: {result.frsc.vehicle}</div>}
+                    {result.frsc.state && <div style={{ color: 'var(--muted)' }}>Registered in: {result.frsc.state}</div>}
                     <div style={{ fontSize: 11, color: '#4A5568', marginTop: 6 }}>Source: {result.frsc.source}</div>
                   </div>
                 )}
@@ -166,7 +166,7 @@ export default function VerifyClient() {
             )}
 
             {result.message && (result.status === 'valid' || result.status === 'expired') && (
-              <div style={{ marginTop: 16, padding: 14, borderRadius: 10, background: 'rgba(255,255,255,0.06)', fontSize: 13, color: '#6B7FA3', borderLeft: `3px solid ${cfg.color}` }}>
+              <div style={{ marginTop: 16, padding: 14, borderRadius: 10, background: 'rgba(255,255,255,0.06)', fontSize: 13, color: 'var(--muted)', borderLeft: `3px solid ${cfg.color}` }}>
                 {result.message}
               </div>
             )}
@@ -186,10 +186,10 @@ export default function VerifyClient() {
             <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, marginBottom: 6 }}>
               {result.status === 'expired' ? 'Renew Your Insurance Today' : 'Get Insured — It\'s Easy'}
             </div>
-            <p style={{ color: '#6B7FA3', fontSize: 13, marginBottom: 16 }}>
+            <p style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 16 }}>
               {result.status === 'expired' ? 'Your policy has lapsed. Renew now to stay protected and legally compliant.' : 'Driving without insurance is illegal in Nigeria. Get covered in minutes from ₦5,000/year.'}
             </p>
-            <Link href="/coverage" style={{ padding: '12px 24px', borderRadius: 12, background: '#F4A623', color: '#0A0F1E', fontWeight: 700, textDecoration: 'none', fontFamily: 'Syne, sans-serif', display: 'inline-block' }}>
+            <Link href="/coverage" style={{ padding: '12px 24px', borderRadius: 12, background: 'var(--accent)', color: '#fff', fontWeight: 700, textDecoration: 'none', fontFamily: 'Syne, sans-serif', display: 'inline-block' }}>
               Get Covered Now →
             </Link>
           </div>
@@ -205,7 +205,7 @@ export default function VerifyClient() {
             <div key={item.title} style={{ padding: '20px 16px', borderRadius: 14, background: 'rgba(13,27,62,0.6)', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
               <div style={{ fontSize: 28, marginBottom: 8 }}>{item.icon}</div>
               <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 13, marginBottom: 4 }}>{item.title}</div>
-              <div style={{ fontSize: 12, color: '#6B7FA3' }}>{item.desc}</div>
+              <div style={{ fontSize: 12, color: 'var(--muted)' }}>{item.desc}</div>
             </div>
           ))}
         </div>

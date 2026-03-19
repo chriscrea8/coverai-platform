@@ -14,15 +14,15 @@ export default function LegalPage() {
             <p className="text-muted text-sm">Last updated: March 1, 2026</p>
           </div>
           <div className="prose prose-invert space-y-8 text-sm leading-relaxed text-muted">
-            <div className="p-6 rounded-2xl" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="p-6 rounded-2xl" style={{ background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,0.07)' }}>
               <h2 className="font-syne font-bold text-white text-lg mb-3">1. Overview</h2>
               <p>CoverAI Technologies Ltd ("CoverAI", "we", "us") is a technology company incorporated in Nigeria (RC 1234567) that provides an AI-powered insurance distribution platform. We are regulated by the National Insurance Commission (NAICOM) as an insurance intermediary.</p>
             </div>
-            <div className="p-6 rounded-2xl" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="p-6 rounded-2xl" style={{ background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,0.07)' }}>
               <h2 className="font-syne font-bold text-white text-lg mb-3">2. Your Rights</h2>
               <p>You have the right to access, correct, or delete your personal information at any time. To exercise these rights, contact us at <a href="mailto:legal@coverai.ng" className="text-accent hover:underline">legal@coverai.ng</a>. We will respond to all requests within 30 days.</p>
             </div>
-            <div className="p-6 rounded-2xl" style={{ background: 'rgba(13,27,62,0.8)', border: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="p-6 rounded-2xl" style={{ background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,0.07)' }}>
               <h2 className="font-syne font-bold text-white text-lg mb-3">3. Contact Us</h2>
               <p>For any legal queries, privacy concerns, or complaints:</p>
               <div className="mt-3 space-y-1">
