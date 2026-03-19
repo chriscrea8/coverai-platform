@@ -65,12 +65,11 @@ export default function ChatPage() {
     })
 
   return (
-    <div className="min-h-screen bg-ink flex flex-col"
-      style={{ background: 'var(--ink)' }}>
+    <div className="min-h-screen bg-ink flex flex-col gradient-hero" style={{}}>
 
       {/* Header */}
       <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 border-b border-white/5 sticky top-0 z-10"
-        style={{ background: 'rgba(10,15,30,0.95)', backdropFilter: 'blur(12px)' }}>
+        style={{ background: 'var(--glass-3)', backdropFilter: 'blur(20px)' }}>
         <Link href="/" className="font-syne font-black text-lg md:text-xl">Cover<span className="text-accent">AI</span></Link>
         <div className="flex gap-2 md:gap-3">
           <Link href="/dashboard" className="px-3 md:px-4 py-2 text-xs md:text-sm text-muted hover:text-white transition-colors hidden sm:block">Dashboard</Link>
@@ -87,7 +86,7 @@ export default function ChatPage() {
         </div>
 
         <div className="flex-1 flex flex-col rounded-2xl overflow-hidden"
-          style={{ background: 'var(--glass-1)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          style={{ background: 'var(--glass-1)', border: '1px solid var(--border)' }}>
           {/* ARIA header */}
           <div className="px-4 md:px-5 py-3 md:py-4 flex items-center gap-3 border-b border-white/5"
             style={{ background: 'rgba(26,58,143,0.2)' }}>

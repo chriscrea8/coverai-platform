@@ -243,7 +243,7 @@ export default function ComparePage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--ink)', color: '#fff' }} className="gradient-hero">
+    <div className='gradient-hero' style={{ minHeight: '100vh', color: '#fff' }}>
 
       <Navbar />
       <div style={{ height: 64 }} />

@@ -296,7 +296,7 @@ export default function LearnPage() {
 
   if (selectedGuide) {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--ink)', color: '#fff' }}>
+      <div className='gradient-hero' style={{ minHeight: '100vh', color: '#fff' }}>
         <Navbar />
         <div style={{ height: 64 }} />
         <div style={{ padding: '16px 24px' }}>
@@ -384,7 +384,7 @@ export default function LearnPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--ink)', color: '#fff' }}>
+    <div className='gradient-hero' style={{ minHeight: '100vh', color: '#fff' }}>
       {/* Badge earned toast */}
       {newBadge && (
         <div style={{
