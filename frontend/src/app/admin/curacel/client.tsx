@@ -53,7 +53,10 @@ export default function CuracelAdminClient() {
           <span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
           <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 18 }}>🔌 Curacel Integration</span>
         </div>
-        <button onClick={loadAll} style={{ padding: '8px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', fontSize: 13 }}>↻ Refresh</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={async () => { try { const r = await (await import('@/lib/api')).curacelApi.syncPolicies(); alert(r.data?.message || 'Synced!'); } catch {} }} style={{ padding: '8px 16px', borderRadius: 10, background: 'rgba(0,194,168,0.15)', border: '1px solid rgba(0,194,168,0.3)', color: '#00C2A8', cursor: 'pointer', fontSize: 13 }}>⟳ Sync Policies</button>
+          <button onClick={loadAll} style={{ padding: '8px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', fontSize: 13 }}>↻ Refresh</button>
+        </div>
       </div>
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 24px' }}>
@@ -82,6 +85,23 @@ export default function CuracelAdminClient() {
                 <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 900, fontSize: 22, color: '#2EC97E' }}>₦{Number(wallet.balance || 0).toLocaleString()}</div>
               </div>
             )}
+          </div>
+        </div>
+
+
+        {/* Webhook Config */}
+        <div style={{ padding: 20, borderRadius: 16, marginBottom: 28, background: 'rgba(124,107,255,0.1)', border: '1px solid rgba(124,107,255,0.3)' }}>
+          <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, marginBottom: 12 }}>🪝 Webhook Configuration</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.04)' }}>
+              <div style={{ fontSize: 11, color: '#6B7FA3', marginBottom: 4 }}>Set this URL in your Curacel dashboard</div>
+              <code style={{ fontSize: 12, color: '#7C6BFF', wordBreak: 'break-all' }}>https://coverai-platform-production.up.railway.app/api/v1/curacel/webhook</code>
+            </div>
+            <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.04)' }}>
+              <div style={{ fontSize: 11, color: '#6B7FA3', marginBottom: 4 }}>Add to Railway env vars</div>
+              <div style={{ fontSize: 12, color: '#6B7FA3' }}><code style={{ color: '#F4A623' }}>CURACEL_WEBHOOK_SECRET</code> — from Curacel dashboard</div>
+              <div style={{ fontSize: 12, color: '#6B7FA3', marginTop: 4 }}><code style={{ color: '#F4A623' }}>CURACEL_PARTNER_KEY</code> — your partner key UUID</div>
+            </div>
           </div>
         </div>
 

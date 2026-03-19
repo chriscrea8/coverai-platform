@@ -119,6 +119,12 @@ export const curacelApi = {
   getPolicies: () => api.get('/curacel/policies'),
   submitClaim: (dto: any) => api.post('/curacel/claims', dto),
   getWallet: () => api.get('/curacel/wallet'),
+  // Full order flow
+  createCustomer: (dto: any) => api.post('/curacel/customers', dto),
+  createOrder: (dto: any) => api.post('/curacel/orders', dto),
+  getOrder: (id: string) => api.get(`/curacel/orders/${id}`),
+  getPolicyDocument: (id: string) => api.get(`/curacel/policies/${id}/document`),
+  syncPolicies: () => api.post('/curacel/sync-policies'),
 }
 
 export const verificationApi = {

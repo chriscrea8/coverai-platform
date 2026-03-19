@@ -363,4 +363,53 @@ export class CuracelService {
     }
     return product.min_premium || 0;
   }
+  // ── ORDERS ────────────────────────────────────────────────────────────────
+
+  async createOrder(payload: Record<string, any>) {
+    if (!this.client) {
+      this.logger.warn('Curacel createOrder called without API key — returning mock order');
+      return {
+        order: {
+          id: Date.now(),
+          asset_ref: payload.asset_ref,
+          product_price: 15000,
+          partner_commission: 450,
+          amount_due: 14550,
+          currency: 'NGN',
+          payment_instructions: { message: 'Mock payment — add CURACEL_API_KEY for live orders', success: true },
+          payment_gateway_charge: null,
+        }
+      };
+    }
+    try {
+      const res = await this.client.post('/orders', payload);
+      return res.data;
+    } catch (e) {
+      this.logger.error('Curacel createOrder error: ' + (e.response?.data?.message || e.message));
+      throw new Error(e.response?.data?.message || 'Failed to create Curacel order. Please try again.');
+    }
+  }
+
+  async getOrderById(orderId: string) {
+    if (!this.client) return null;
+    try {
+      const res = await this.client.get(`/orders/${orderId}`);
+      return res.data;
+    } catch (e) {
+      this.logger.warn('Curacel getOrderById failed: ' + e.message);
+      return null;
+    }
+  }
+
+  async getPolicyDocument(policyId: string) {
+    if (!this.client) return { url: null, message: 'Document not available in passthrough mode' };
+    try {
+      // Returns binary — caller should handle redirect or serve URL
+      const res = await this.client.get(`/policies/${policyId}/doc`);
+      return res.data;
+    } catch (e) {
+      this.logger.warn('Curacel getPolicyDocument failed: ' + e.message);
+      return { url: null, message: 'Document not available' };
+    }
+  }
 }
