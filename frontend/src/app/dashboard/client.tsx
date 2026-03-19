@@ -705,11 +705,36 @@ function DashboardInner() {
 
                         <div className="flex gap-2 flex-wrap">
                           {isPending && (
-                            <Link href="/dashboard?tab=payments"
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const token = localStorage.getItem('access_token')
+                                  const amount = Number(p.installmentAmount || p.premiumAmount || 0)
+                                  const payR = await fetch(`${API}/payments/create`, {
+                                    method: 'POST',
+                                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      policyId: p.id,
+                                      amount,
+                                      callbackUrl: `${window.location.origin}/payment/success`,
+                                    }),
+                                  })
+                                  const payD = await payR.json()
+                                  const url = payD?.authorizationUrl || payD?.data?.authorizationUrl
+                                  if (url) {
+                                    window.location.href = url
+                                  } else {
+                                    const errMsg = payD?.message || 'Could not reach payment gateway. Please try again or contact support.'
+                                    alert(`⚠️ ${errMsg}`)
+                                  }
+                                } catch (e: any) {
+                                  alert(e?.message || 'Could not initiate payment. Please try again.')
+                                }
+                              }}
                               className="px-4 py-2 rounded-xl text-xs font-bold transition-all hover:brightness-110"
                               style={{ background: '#F4A623', color: '#0A0F1E' }}>
-                              Complete Payment
-                            </Link>
+                              💳 Complete Payment
+                            </button>
                           )}
                           {isLapsed && (
                             <button
@@ -866,13 +891,14 @@ function DashboardInner() {
                               onClick={async () => {
                                 try {
                                   const res = await paymentsApi.retry(p.id)
-                                  const url = res.data?.data?.authorizationUrl || res.data?.authorizationUrl
+                                  // api interceptor wraps response in .data, paystack URL may be nested further
+                                  const url = res.data?.authorizationUrl || res.data?.data?.authorizationUrl
                                   if (url) {
-                                    // Remove old pending record from list — new one will appear after success
                                     setPayments(prev => prev.filter(x => x.id !== p.id))
                                     window.location.href = url
                                   } else {
-                                    alert('Could not get payment link. Please try again.')
+                                    const errMsg = res.data?.message || res.data?.paystackError || 'Could not get payment link.'
+                                    alert(`⚠️ ${errMsg}`)
                                   }
                                 } catch (e: any) {
                                   alert(e.response?.data?.message || 'Could not retry payment')

@@ -56,8 +56,11 @@ export class PaymentsService {
       await this.paymentRepo.update(payment.id, { gatewayReference: access_code });
       return { payment, authorizationUrl: authorization_url, accessCode: access_code, reference };
     } catch (error) {
-      this.logger.warn('Paystack init: ' + (error?.response?.data?.message || error.message));
-      return { payment, authorizationUrl: null, reference };
+      const paystackMsg = error?.response?.data?.message || error?.message || 'Unknown Paystack error';
+      this.logger.error('Paystack init FAILED: ' + paystackMsg);
+      // Return payment record + null URL so caller can decide what to do
+      // Also include the error so the controller can surface it
+      return { payment, authorizationUrl: null, reference, paystackError: paystackMsg };
     }
   }
 

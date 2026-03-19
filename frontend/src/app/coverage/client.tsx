@@ -236,13 +236,21 @@ export default function CoveragePage() {
 
       const authUrl = payRes.data?.data?.authorizationUrl || payRes.data?.authorizationUrl
       if (authUrl) {
+        // ✅ Redirect to Paystack checkout
         window.location.href = authUrl
       } else {
-        setToast('Policy created! Complete payment from your dashboard.')
-        setTimeout(() => router.push('/dashboard?highlight=new-policy'), 2500)
+        // Paystack failed — show the actual error from backend
+        const errMsg = payRes.data?.message || payRes.data?.data?.message
+        if (errMsg) {
+          setToast(`⚠️ Payment gateway error: ${errMsg}. Your policy was created — complete payment from your dashboard.`)
+        } else {
+          setToast('⚠️ Payment gateway unavailable. Your policy was created — click "Complete Payment" in your dashboard.')
+        }
+        setPurchasing(null)
+        setTimeout(() => router.push('/dashboard?tab=policies&highlight=new-policy'), 3500)
       }
     } catch (e: any) {
-      const msg = e.response?.data?.message || e.message || 'Something went wrong. Please try again.'
+      const msg = e.response?.data?.message || e.response?.data?.error || e.message || 'Something went wrong. Please try again.'
       setToast(Array.isArray(msg) ? msg.join(', ') : msg)
       setPurchasing(null)
     }

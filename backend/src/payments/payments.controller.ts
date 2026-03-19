@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Delete, Body, Headers, Req, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Body, Headers, Req, Res, Param, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
@@ -14,8 +14,19 @@ export class PaymentsController {
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth('JWT')
   @ApiOperation({ summary: 'Initiate payment' })
-  create(@CurrentUser('id') userId: string, @Body() dto: CreatePaymentDto) {
-    return this.paymentsService.create(userId, dto);
+  async create(@CurrentUser('id') userId: string, @Body() dto: CreatePaymentDto, @Res({ passthrough: true }) res: any) {
+    const result = await this.paymentsService.create(userId, dto);
+    if (!result.authorizationUrl) {
+      // Paystack failed — return 402 with error message so frontend can show it
+      res.status(402);
+      return {
+        success: false,
+        message: result.paystackError || 'Payment gateway unavailable. Please check your Paystack configuration.',
+        payment: result.payment,
+        reference: result.reference,
+      };
+    }
+    return result;
   }
 
   @Post('webhook')
